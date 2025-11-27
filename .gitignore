@@ -1,0 +1,13 @@
+.git/
+.venv/
+__pycache__/
+build/
+dist/
+node_modules/
+venv/
+.DS_Store
+Thumbs.db
+*.bak*
+.env
+*.log
+*.pyc
