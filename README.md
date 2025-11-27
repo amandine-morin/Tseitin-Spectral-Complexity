@@ -27,6 +27,7 @@ We propose the following spectral quantity as a hardness predictor:
 \]
 
 Where:
+
 - `n` = number of vertices  
 - `d` = average degree  
 - `λ₂` = the spectral gap of the normalized Laplacian  
@@ -50,6 +51,7 @@ Small-scale experiments (up to `n = 80`) show:
 These results are **illustrative**, not statistically conclusive.
 
 ### Quick Access
+
 - 📈 **Correlation Plot:**  
   `./figures/tseitin_complexity_analysis.png`
 - 📄 **Full Preprint (PDF):**  
@@ -61,23 +63,56 @@ These results are **illustrative**, not statistically conclusive.
 
 ### Requirements
 
-| Library    | Role                                     |
-|------------|-------------------------------------------|
-| `networkx` | Graph generation & spectral computations  |
-| `pysat`    | SAT solving via MiniSat backend           |
-| `numpy`    | Linear algebra & numerics                 |
-| `matplotlib` | Visualizations                         |
+| Library      | Role                                      |
+|--------------|--------------------------------------------|
+| `networkx`   | Graph generation & spectral computations   |
+| `pysat`      | SAT solving via MiniSat backend            |
+| `numpy`      | Linear algebra & numerics                  |
+| `matplotlib` | Visualizations                             |
 
 ### Install dependencies
+
 ```bash
 pip install -r requirements.txt
+```
 
 ### Run experiments
+
 ```bash
 python code/main_experiment.py
+```
 
-### ⚖️ Licensing
+---
 
-The source code for the experiments (Python scripts in the `code/` folder) is released under the **MIT License**.
+## ⚠️ Disclaimer
 
-The text and figures of the research paper (in the `report/` folder) are licensed under the **Creative Commons Attribution 4.0 International License (CC BY 4.0)**, ensuring maximal reuse for academic purposes, provided proper citation is given.
+This is an **exploratory research project** containing:
+
+- Conjectures (no theorems are proved)
+- Preliminary empirical evidence
+- Speculative connections between physics, spectral graph theory,  
+  and proof complexity
+
+Instance sizes are small, and the results should be viewed as  
+**hypothesis-generating** rather than conclusive.
+
+Feedback, testing, critique, and replication are warmly invited.
+
+---
+
+## 📚 Licensing
+
+### Code  
+MIT License.
+
+### Research Text & Figures  
+Creative Commons Attribution 4.0 International (CC BY 4.0).
+
+---
+
+## 💬 Feedback & Collaboration
+
+This project is released in the spirit of **open scientific exploration**.  
+If you test, extend, or refute any aspect of this work, please share your findings.
+
+Comments and discussions are welcome.
