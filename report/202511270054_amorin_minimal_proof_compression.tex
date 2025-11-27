@@ -1,3 +1,4 @@
+\pdfoutput=1
 \documentclass[11pt,a4paper]{article}
 
 % ---- Packages ----
@@ -12,9 +13,10 @@
 \usepackage[nameinlink,capitalize]{cleveref}
 \usepackage{booktabs}
 \usepackage{siunitx}
+\usepackage[section]{placeins}
 \sisetup{group-separator={\,},detect-all}
 \usepackage{pgfplots}
-\pgfplotsset{compat=1.18}
+\pgfplotsset{compat=1.17} % arXiv-safe (slightly older than 1.18)
 \usetikzlibrary{positioning,arrows.meta,shapes,calc}
 
 % avoid overfull boxes
@@ -267,7 +269,7 @@ Family          & $d$   & $\gap$           & $\hdeg(G)$        & Comment        
 Cycle $C_n$     & 2     & $\Theta(1/n^2)$ & $\Theta(1)$       & 1-D weak       \\
 Grid $m\times m$& $O(1)$& $\Theta(1/n)$   & $\Theta(\sqrt{n})$& 2-D medium     \\
 Expander        & $O(1)$& $\Theta(1)$     & $\Theta(n)$       & strong         \\
-Complete $K_n$  & $n$   & $1$             & $\Theta(n)$       & dense          \\
+Complete $K_n$  & $n$   & 1               & $\Theta(n)$       & dense          \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -305,6 +307,7 @@ a public repository.
 \begin{tabular}{lrrrrr}
 \toprule
 Family         & $n$ & clauses & width & $\hdeg(G)$ & time\_s \\
+
 \midrule
 cycle          &  8  &   40    & 3     & 4.044      & 0.0000 \\
 cycle          & 16  &   80    & 3     & 4.333      & 0.0000 \\
@@ -366,6 +369,7 @@ Cycle (50)     & 50  &  250    & 3     & 50.395     & 0.0001 \\
 \end{tikzpicture}
 \caption{Correlation between $\hdeg(G)$ and MiniSat time (illustrative).}
 \end{figure}
+\FloatBarrier
 
 % ============================
 \section{Limitations and Future Directions}
