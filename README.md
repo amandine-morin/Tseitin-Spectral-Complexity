@@ -1,7 +1,31 @@
 # Spectral Predictors for Tseitin Hardness: An Exploratory Study  
 **Independent Research by Amandine Morin**
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17730888.svg)](https://doi.org/10.5281/zenodo.17730888)
+
 ---
+
+## 📎 Citation
+
+If you use this work, please cite:
+
+**Amandine Morin**. (2025). *amandine-morin/Tseitin-Spectral-Complexity: Initial Public Version (v1.0.0).* Zenodo.  
+https://doi.org/10.5281/zenodo.17730888
+
+BibTeX:
+
+```bibtex
+@software{amandine_tseitin_spectral_2025,
+  author       = {Amandine Morin},
+  title        = {{amandine-morin/Tseitin-Spectral-Complexity: Initial Public Version}},
+  month        = jan,
+  year         = 2025,
+  publisher    = {Zenodo},
+  version      = {v1.0.0},
+  doi          = {10.5281/zenodo.17730888},
+  url          = {https://doi.org/10.5281/zenodo.17730888}
+}
+```
 
 ## 🔍 Overview
 
