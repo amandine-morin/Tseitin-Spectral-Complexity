@@ -1,46 +1,82 @@
-# A Physics-First Formulation of the Minimal Proof Compression Conjecture
+# Spectral Predictors for Tseitin Hardness: An Exploratory Study  
+**Independent Research by Amandine Morin**
 
-**Researcher:** Amandine MORIN (Independent Research)
+---
 
-## 🔬 Project Overview
-This project investigates the link between the **spectral properties of graphs** and the computational complexity required to solve the corresponding **Tseitin formulas** (a core problem in complexity theory). The approach is motivated by a physics-first perspective on information bounds in computation.
+## 🔍 Overview
 
-***
+This repository accompanies an **exploratory preprint** investigating how  
+**spectral graph structure** relates to the hardness of **Tseitin formulas**  
+in the Resolution proof system.
 
-## 🔑 Key Contribution: The Spectral Predictor $\widehat{\deg}(G)$
+The project is motivated by a **physics-first viewpoint**:  
+if information has physical cost (Landauer), then distinguishing SAT from UNSAT  
+should require a minimal **information budget** determined by the structure of the graph.
 
-We introduce the spectral metric $\widehat{\deg}(G)$, which combines local density ($d$) and global expansion ($\lambda_2$), to predict the minimal required information budget—and thus, the hardness—of Resolution proofs:
+This work presents *conjectures and preliminary observations*, not formal proofs.
 
-$$\widehat{\deg}(G) = \frac{n}{\sqrt{\frac{1}{d}+\frac{1}{\lambda_2}}}$$
+---
 
-***
+## 🔑 Core Hypothesis: The Spectral Predictor `\hat{deg}(G)`
 
-## 📈 Key Result (Empirical Validation)
-The empirical results demonstrate a strong correlation and an **exponential jump** in solver time (MiniSat) as $\widehat{\deg}(G)$ increases, confirming the metric's validity for expander graphs (see the full report for details).
+We propose the following spectral quantity as a hardness predictor:
 
-* [Correlation Plot (PNG)](./figures/tseitin_complexity_analysis.png)
-* [Full Research Paper (PDF)](./report/minimal_proof_compression.pdf)
+\[
+\widehat{\deg}(G) =
+\frac{n}{\sqrt{\frac{1}{d} + \frac{1}{\lambda_2}}}
+\]
 
-***
+Where:
+- `n` = number of vertices  
+- `d` = average degree  
+- `λ₂` = the spectral gap of the normalized Laplacian  
 
-## 🛠️ Requirements & Execution
-The experiment requires Python (3.x) and the following libraries:
+This blends **local density** and **global connectivity** into a single  
+structural measure intended to approximate the *minimal incompressible information*  
+any algorithm must process to solve a Tseitin instance.
 
-| Library | Purpose |
-| :--- | :--- |
-| `pysat` | SAT solver interface (MiniSat backend) |
-| `networkx` | Graph generation and spectral analysis |
-| `numpy`, `matplotlib` | Mathematical computations and visualization |
+This is **conjectural**, not a proven theorem.
 
-To install dependencies, please create and activate a virtual environment, then run:
+---
+
+## 📊 Empirical Observations (Preliminary)
+
+Small-scale experiments (up to `n = 80`) show:
+
+- A noticeable correlation between `\hat{deg}(G)` and SAT solver time  
+- Canonical families behave as predicted (cycles, grids, expanders)  
+- Expander-like graphs show an **exponential jump** in difficulty  
+
+These results are **illustrative**, not statistically conclusive.
+
+### Quick Access
+- 📈 **Correlation Plot:**  
+  `./figures/tseitin_complexity_analysis.png`
+- 📄 **Full Preprint (PDF):**  
+  `./report/minimal_proof_compression.pdf`
+
+---
+
+## 🧪 Reproducing the Experiments
+
+### Requirements
+
+| Library    | Role                                     |
+|------------|-------------------------------------------|
+| `networkx` | Graph generation & spectral computations  |
+| `pysat`    | SAT solving via MiniSat backend           |
+| `numpy`    | Linear algebra & numerics                 |
+| `matplotlib` | Visualizations                         |
+
+### Install dependencies
 ```bash
 pip install -r requirements.txt
 
-To run the experiment, use:
+### Run experiments
 ```bash
 python code/main_experiment.py
 
-## ⚖️ Licensing
+### ⚖️ Licensing
 
 The source code for the experiments (Python scripts in the `code/` folder) is released under the **MIT License**.
 
