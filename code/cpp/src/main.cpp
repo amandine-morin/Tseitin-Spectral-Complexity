@@ -2,66 +2,97 @@
 #include "kissat_runner.hpp"
 #include "tseitin_cnf.hpp"
 
+#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <numeric>
+#include <random>
 #include <string>
 #include <vector>
 
-struct ExperimentConfig {
-    int vertices;
-    int degree;
-};
-
-std::vector<bool> buildCharges(int vertices) {
+std::vector<bool> buildRandomCharges(int vertices, std::mt19937& rng) {
     std::vector<bool> charges(vertices, false);
-    // Set a single charge to make the overall parity odd, producing an unsatisfiable instance.
-    if (!charges.empty()) {
-        charges[0] = true;
+    std::bernoulli_distribution dist(0.5);
+
+    for (int i = 0; i < vertices; ++i) {
+        charges[i] = dist(rng);
     }
+
+    // Ensure an odd number of charges to produce an unsatisfiable instance.
+    int charge_count = std::accumulate(charges.begin(), charges.end(), 0);
+    if (charge_count % 2 == 0 && !charges.empty()) {
+        charges[0] = !charges[0];
+    }
+
     return charges;
 }
 
 int main() {
-    std::vector<ExperimentConfig> experiments = {
-        {6, 2},
-        {8, 3},
-        {10, 4}
-    };
+    const std::vector<int> vertex_sizes = {6, 8, 10, 12, 16, 20};
+    const std::vector<int> degrees = {2, 3, 4};
+    const int trials_per_config = 3;
 
-    std::filesystem::create_directories("out");
+    std::filesystem::path work_dir = std::filesystem::path("..") / ".." / "work";
+    std::filesystem::create_directories(work_dir);
 
-    std::ofstream csv("out/results.csv", std::ios::trunc);
-    csv << "vertices,degree,variables,clauses,runtime_ms,exit_code\n";
+    std::filesystem::path csv_path = work_dir / "results_kissat.csv";
+    std::ofstream csv(csv_path, std::ios::trunc);
+    if (!csv.is_open()) {
+        std::cerr << "Failed to open CSV log at: " << csv_path << '\n';
+        return 1;
+    }
+    csv << "n,d,vars,clauses,runtime_ms,exit_code\n";
 
     KissatRunner runner;
+    std::mt19937 rng(std::random_device{}());
 
-    for (const auto& exp : experiments) {
-        try {
-            Graph graph(exp.vertices, exp.degree);
-            auto charges = buildCharges(exp.vertices);
-            TseitinCnfBuilder builder;
-            auto formula = builder.build(graph, charges);
+    for (int vertices : vertex_sizes) {
+        for (int degree : degrees) {
+            for (int trial = 1; trial <= trials_per_config; ++trial) {
+                try {
+                    Graph graph(vertices, degree);
+                    auto charges = buildRandomCharges(vertices, rng);
 
-            std::string cnf_path = "out/graph_" + std::to_string(exp.vertices) + "_" + std::to_string(exp.degree) + ".cnf";
-            std::string solver_output = "out/kissat_" + std::to_string(exp.vertices) + "_" + std::to_string(exp.degree) + ".txt";
+                    TseitinCnfBuilder builder;
+                    auto formula = builder.build(graph, charges);
 
-            TseitinCnfBuilder::writeDimacs(formula, cnf_path);
+                    std::filesystem::path cnf_path = work_dir / ("graph_" + std::to_string(vertices) + "_" + std::to_string(degree) + "_" + std::to_string(trial) + ".cnf");
+                    std::filesystem::path solver_output = work_dir / ("kissat_" + std::to_string(vertices) + "_" + std::to_string(degree) + "_" + std::to_string(trial) + ".txt");
 
-            KissatResult result = runner.run(cnf_path, solver_output);
+                    TseitinCnfBuilder::writeDimacs(formula, cnf_path.string());
 
-            csv << exp.vertices << ',' << exp.degree << ','
-                << formula.variable_count << ',' << formula.clauses.size() << ','
-                << result.runtime_ms << ',' << result.exit_code << '\n';
+                    auto start = std::chrono::steady_clock::now();
+                    KissatResult result = runner.run(cnf_path.string(), solver_output.string());
+                    auto end = std::chrono::steady_clock::now();
 
-            std::cout << "Experiment n=" << exp.vertices << " d=" << exp.degree
-                      << " -> vars=" << formula.variable_count
-                      << ", clauses=" << formula.clauses.size()
-                      << ", runtime_ms=" << result.runtime_ms
-                      << ", exit=" << result.exit_code << "\n";
-        } catch (const std::exception& ex) {
-            std::cerr << "Failed experiment n=" << exp.vertices << " d=" << exp.degree
-                      << ": " << ex.what() << "\n";
+                    long long runtime_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+                    // Prefer runtime returned by KissatRunner if it is positive; otherwise, fall back to local timer.
+                    if (result.runtime_ms <= 0) {
+                        result.runtime_ms = runtime_ms;
+                    }
+
+                    csv << vertices << ',' << degree << ','
+                        << formula.variable_count << ',' << formula.clauses.size() << ','
+                        << result.runtime_ms << ',' << result.exit_code << '\n';
+
+                    if (result.exit_code != 0) {
+                        std::cerr << "Warning: Kissat exit code " << result.exit_code
+                                  << " for n=" << vertices << " d=" << degree
+                                  << " trial=" << trial << '\n';
+                    }
+
+                    std::cout << "Experiment n=" << vertices << " d=" << degree
+                              << " trial=" << trial
+                              << " -> vars=" << formula.variable_count
+                              << ", clauses=" << formula.clauses.size()
+                              << ", runtime_ms=" << result.runtime_ms
+                              << ", exit=" << result.exit_code << "\n";
+                } catch (const std::exception& ex) {
+                    std::cerr << "Failed experiment n=" << vertices << " d=" << degree
+                              << " trial=" << trial << ": " << ex.what() << "\n";
+                }
+            }
         }
     }
 
