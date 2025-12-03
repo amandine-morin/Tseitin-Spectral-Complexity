@@ -140,3 +140,66 @@ This project is released in the spirit of **open scientific exploration**.
 If you test, extend, or refute any aspect of this work, please share your findings.
 
 Comments and discussions are welcome.
+
+---
+
+## 🛠️ C++ Tseitin CNF Generator & Kissat Runner
+
+This repository now includes a minimal, modular C++17 project that builds d-regular graphs, generates Tseitin contradictions, writes DIMACS CNF files, and runs the Kissat SAT solver through WSL. The C++ code lives in `code/cpp` to keep it separated from the Python experiments in `code/`. It is organized for Windows + WSL workflows and compiles with MSVC (Visual Studio 2022).
+
+### Project Layout
+
+```
+code/
+  main_experiment.py
+  cpp/
+    CMakeLists.txt
+    include/
+      graph.hpp
+      kissat_runner.hpp
+      tseitin_cnf.hpp
+    src/
+      graph.cpp
+      kissat_runner.cpp
+      tseitin_cnf.cpp
+      main.cpp
+```
+
+### Build (VS Code on Windows)
+1. Install **Visual Studio 2022 Build Tools** with the C++ workload and **CMake**.
+2. Install **WSL** with an Ubuntu distribution and build Kissat at `/home/dinah/kissat/build/kissat` inside WSL.
+3. Open the repository folder (or `code/cpp` directly) in VS Code (Windows side) and install the **CMake Tools** extension.
+4. Configure the project with `code/cpp/CMakeLists.txt` as the source:
+   - Command Palette → `CMake: Select a Kit` → choose **Visual Studio 17 2022** (x64).
+   - Command Palette → `CMake: Configure` (ensure the source directory is `code/cpp`).
+5. Build:
+   - Command Palette → `CMake: Build` → target `tseitin_app`.
+6. The executable will be placed under `build/Debug/` or `build/Release/` (relative to the repository root if you configure with `-B build`).
+
+Command-line equivalent:
+```powershell
+cmake -S code/cpp -B build
+cmake --build build --config Release
+```
+
+### Running Experiments
+1. Ensure the Kissat binary exists at `/home/dinah/kissat/build/kissat` inside WSL.
+2. From a Developer Command Prompt (or VS Code terminal) at the repository root, run the built executable:
+   ```
+   build/Debug/tseitin_app.exe
+   ```
+   or
+   ```
+   build/Release/tseitin_app.exe
+   ```
+3. The program will:
+   - Build several d-regular graphs.
+   - Generate Tseitin CNFs in `out/*.cnf`.
+   - Invoke Kissat via `wsl /home/dinah/kissat/build/kissat <input> > <output>`.
+   - Log results to `out/results.csv`.
+
+### Notes
+- Windows paths are converted to WSL paths using a manual `C:\\...` → `/mnt/c/...` conversion to keep redirection working inside WSL.
+- XOR gates are encoded with the standard 4-clause Tseitin expansion for `z = x XOR y`.
+- Each vertex gets a parity constraint; a single charged vertex ensures the overall instance is unsatisfiable.
+
