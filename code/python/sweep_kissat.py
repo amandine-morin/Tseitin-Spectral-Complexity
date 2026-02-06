@@ -32,10 +32,11 @@ def run_single_trial(
     exe_path: Path,
     n: int,
     d: int,
+    seed: int,
     timeout_seconds: int,
 ) -> tuple[float, int, int]:
     """Run a single trial and return runtime_ms, timeout_flag, and exit_code."""
-    cmd = [str(exe_path), "--n", str(n), "--d", str(d)]
+    cmd = [str(exe_path), "--n", str(n), "--d", str(d), "--seed", str(seed)]
     start = time.perf_counter()
     try:
         completed = subprocess.run(
@@ -59,7 +60,7 @@ def run_single_trial(
 
 def append_row(file_path: Path, row: list[object], write_header: bool) -> None:
     """Append a single row to the CSV file, writing the header if needed."""
-    with file_path.open("a", newline="") as csvfile:
+    with file_path.open("a", newline="", encoding="utf-8") as csvfile:
         writer = csv.writer(csvfile)
         if write_header:
             writer.writerow(
@@ -99,8 +100,9 @@ def validate_executable(exe_path: Path) -> None:
 def main() -> None:
     """Run the experimental sweep and record results to CSV."""
     args = parse_args()
+    exe_path = args.exe.resolve()
     try:
-        validate_executable(args.exe)
+        validate_executable(exe_path)
     except (FileNotFoundError, PermissionError) as exc:
         print(f"Error: {exc}")
         raise SystemExit(1) from exc
@@ -124,9 +126,10 @@ def main() -> None:
             f"seed={trial_seed}..."
         )
         runtime_ms, timeout_flag, exit_code = run_single_trial(
-            args.exe,
+            exe_path,
             n,
             d,
+            trial_seed,
             TIMEOUT_SECONDS,
         )
 
