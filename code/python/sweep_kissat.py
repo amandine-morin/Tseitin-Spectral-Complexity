@@ -25,7 +25,7 @@ MASTER_SEED = 123456789
 
 def should_write_header(file_path: Path) -> bool:
     """Return True if the CSV header should be written for the given path."""
-    return not file_path.exists()
+    return not file_path.exists() or file_path.stat().st_size == 0
 
 
 def run_single_trial(
