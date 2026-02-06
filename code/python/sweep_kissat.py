@@ -7,7 +7,9 @@ handling and logging.
 """
 from __future__ import annotations
 
+import argparse
 import csv
+import os
 import random
 import subprocess
 import time
@@ -18,7 +20,6 @@ D_VALUES = [3, 4, 5, 6]
 N_VALUES = [40, 60, 80, 100, 120, 160, 200]
 TRIALS_PER_SETTING = 5
 TIMEOUT_SECONDS = 60
-RESULTS_PATH = Path("results_kissat_sweep.csv")
 MASTER_SEED = 123456789
 
 
@@ -27,9 +28,14 @@ def should_write_header(file_path: Path) -> bool:
     return not file_path.exists()
 
 
-def run_single_trial(n: int, d: int, timeout_seconds: int) -> tuple[float, int, int]:
+def run_single_trial(
+    exe_path: Path,
+    n: int,
+    d: int,
+    timeout_seconds: int,
+) -> tuple[float, int, int]:
     """Run a single trial and return runtime_ms, timeout_flag, and exit_code."""
-    cmd = ["./run_kissat", "--n", str(n), "--d", str(d)]
+    cmd = [str(exe_path), "--n", str(n), "--d", str(d)]
     start = time.perf_counter()
     try:
         completed = subprocess.run(
@@ -62,9 +68,45 @@ def append_row(file_path: Path, row: list[object], write_header: bool) -> None:
         writer.writerow(row)
 
 
+def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments for the sweep."""
+    parser = argparse.ArgumentParser(description="Run a Kissat sweep experiment.")
+    parser.add_argument(
+        "--exe",
+        type=Path,
+        default=Path("./run_kissat"),
+        help="Path to the run_kissat executable (default: ./run_kissat).",
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=Path("results_kissat_sweep.csv"),
+        help="Path to the output CSV file (default: results_kissat_sweep.csv).",
+    )
+    return parser.parse_args()
+
+
+def validate_executable(exe_path: Path) -> None:
+    """Validate that the executable exists and is runnable."""
+    if not exe_path.exists():
+        raise FileNotFoundError(f"Executable not found: {exe_path}")
+    if not exe_path.is_file():
+        raise FileNotFoundError(f"Executable path is not a file: {exe_path}")
+    if not os.access(exe_path, os.X_OK):
+        raise PermissionError(f"Executable is not runnable: {exe_path}")
+
+
 def main() -> None:
     """Run the experimental sweep and record results to CSV."""
-    header_needed = should_write_header(RESULTS_PATH)
+    args = parse_args()
+    try:
+        validate_executable(args.exe)
+    except (FileNotFoundError, PermissionError) as exc:
+        print(f"Error: {exc}")
+        raise SystemExit(1) from exc
+
+    output_path = args.output
+    header_needed = should_write_header(output_path)
 
     rng = random.Random(MASTER_SEED)
     jobs: list[tuple[int, int, int, int]] = []
@@ -81,7 +123,12 @@ def main() -> None:
             f"Running d={d}, n={n}, trial {trial_index}/{TRIALS_PER_SETTING}, "
             f"seed={trial_seed}..."
         )
-        runtime_ms, timeout_flag, exit_code = run_single_trial(n, d, TIMEOUT_SECONDS)
+        runtime_ms, timeout_flag, exit_code = run_single_trial(
+            args.exe,
+            n,
+            d,
+            TIMEOUT_SECONDS,
+        )
 
         if timeout_flag == 0 and exit_code != 0:
             print(
@@ -90,7 +137,7 @@ def main() -> None:
             )
 
         append_row(
-            RESULTS_PATH,
+            output_path,
             [n, d, trial_index, trial_seed, f"{runtime_ms:.3f}", timeout_flag, exit_code],
             header_needed,
         )
