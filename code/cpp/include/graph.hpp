@@ -1,5 +1,6 @@
 #pragma once
 
+#include <random>
 #include <utility>
 #include <vector>
 
@@ -9,6 +10,7 @@ public:
     using Edge = std::pair<int, int>;
 
     Graph(int vertices, int degree);
+    Graph(int vertices, int degree, std::mt19937& rng);
 
     int vertexCount() const { return vertex_count_; }
     int degree() const { return degree_; }
@@ -27,5 +29,5 @@ private:
 
     void buildRegularGraph();
     void addEdge(int u, int v);
+    void relabelVertices(const std::vector<int>& permutation);
 };
-

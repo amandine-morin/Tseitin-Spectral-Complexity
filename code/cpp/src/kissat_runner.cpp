@@ -47,7 +47,7 @@ KissatResult KissatRunner::run(const std::string& input_path,
 
     // Build the Kissat command with timeout.
     // Kissat supports: --time=<seconds>
-    std::string command = "wsl /home/dinah/kissat/build/kissat ";
+    std::string command = "wsl \"" + kissat_path_ + "\" ";
     command += "--time=" + std::to_string(effective_timeout) + " ";
     command += "\"" + wsl_input + "\" > \"" + wsl_output + "\"";
 
