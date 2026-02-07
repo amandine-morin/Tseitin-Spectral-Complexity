@@ -1,5 +1,6 @@
 #pragma once
 
+#include <random>
 #include <utility>
 #include <vector>
 
@@ -8,7 +9,14 @@ class Graph {
 public:
     using Edge = std::pair<int, int>;
 
+    enum class Mode {
+        Circulant,
+        ConfigModel
+    };
+
     Graph(int vertices, int degree);
+    Graph(int vertices, int degree, std::mt19937& rng);
+    Graph(int vertices, int degree, std::mt19937& rng, Mode mode);
 
     int vertexCount() const { return vertex_count_; }
     int degree() const { return degree_; }
@@ -26,6 +34,7 @@ private:
     std::vector<std::vector<int>> incidence_;
 
     void buildRegularGraph();
+    void buildConfigurationModelGraph(std::mt19937& rng);
     void addEdge(int u, int v);
+    void relabelVertices(const std::vector<int>& permutation);
 };
-
