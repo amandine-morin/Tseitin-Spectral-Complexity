@@ -124,6 +124,28 @@ Feedback, testing, critique, and replication are warmly invited.
 
 ---
 
+## 🧾 Experimental Disclaimer
+
+The experiments in this repository are exploratory and **solver-dependent**.
+Measured runtimes are **not** proofs of Resolution hardness. Results can change
+with solver version or options, CPU/OS configuration, and other system factors.
+Reproducibility depends on recording **seeds** and the **exact build environment**
+(compiler, flags, and solver binary).
+
+---
+
+## ⏱️ Interpreting Timeouts as Censored Data
+
+When runs hit a timeout, treat those measurements as **right-censored** rather
+than as exact runtimes. For reporting, include (i) the **timeout rate** (fraction
+of censored runs) and (ii) the **median of successful runs** to summarize the
+resolved instances without biasing results. For visualization, use **separate
+plots**: one for successful-run runtimes (e.g., median/IQR or log-scale scatter)
+and another for timeout rates versus size/degree. This avoids conflating solver
+speed with censoring effects and keeps comparisons scientifically interpretable.
+
+---
+
 ## 📚 Licensing
 
 ### Code  
@@ -202,4 +224,3 @@ cmake --build build --config Release
 - Windows paths are converted to WSL paths using a manual `C:\\...` → `/mnt/c/...` conversion to keep redirection working inside WSL.
 - XOR gates are encoded with the standard 4-clause Tseitin expansion for `z = x XOR y`.
 - Each vertex gets a parity constraint; a single charged vertex ensures the overall instance is unsatisfiable.
-
