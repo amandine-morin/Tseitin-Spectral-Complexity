@@ -21,9 +21,9 @@ for mode in circulant config_model; do
     exitcode=$?
     set -e
 
-    cnf=$(grep -m1 '^cnf_hash:' "$log" | awk '{print $2}')
-    ms=$(grep -m1 '^runtime_ms:' "$log" | awk '{print $2}')
-    status=$(grep -m1 '^solve_status:' "$log" | awk '{print $2}')
+    cnf=$(awk '/^cnf_hash:/{print $2; exit}' "$log" || true)
+    ms=$(awk '/^runtime_ms:/{print $2; exit}' "$log" || true)
+    status=$(awk '/^solve_status:/{print $2; exit}' "$log" || true)
 
     echo "$mode,$seed,$exitcode,$cnf,$ms,$status"
   done
