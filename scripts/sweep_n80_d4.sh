@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
 OUT=/tmp/sweep
-BIN=./code/cpp/src/run_kissat
-
+BIN=./code/cpp/build/run_kissat
 
 rm -rf "$OUT"
 mkdir -p "$OUT"
@@ -15,13 +14,16 @@ for mode in circulant config_model; do
     out="$OUT/${mode}_s${seed}"
     mkdir -p "$out"
 
-    $BIN --n 80 --d 4 --seed "$seed" --graph_mode "$mode" --outdir "$out" \
-      > "$OUT/log_${mode}_s${seed}.txt"
-    exitcode=$?
+    log="$OUT/log_${mode}_s${seed}.txt"
 
-    cnf=$(grep -m1 '^cnf_hash:' "$OUT/log_${mode}_s${seed}.txt" | awk '{print $2}')
-    ms=$(grep -m1 '^runtime_ms:' "$OUT/log_${mode}_s${seed}.txt" | awk '{print $2}')
-    status=$(grep -m1 '^solve_status:' "$OUT/log_${mode}_s${seed}.txt" | awk '{print $2}')
+    set +e
+    "$BIN" --n 80 --d 4 --seed "$seed" --graph_mode "$mode" --outdir "$out" > "$log"
+    exitcode=$?
+    set -e
+
+    cnf=$(grep -m1 '^cnf_hash:' "$log" | awk '{print $2}')
+    ms=$(grep -m1 '^runtime_ms:' "$log" | awk '{print $2}')
+    status=$(grep -m1 '^solve_status:' "$log" | awk '{print $2}')
 
     echo "$mode,$seed,$exitcode,$cnf,$ms,$status"
   done
