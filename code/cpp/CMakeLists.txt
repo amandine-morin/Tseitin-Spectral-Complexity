@@ -11,6 +11,12 @@ add_library(tseitin_lib
     src/kissat_runner.cpp
 )
 
+add_executable(run_kissat
+  src/run_kissat.cpp
+)
+
+target_link_libraries(run_kissat PRIVATE tseitin_lib)
+
 target_include_directories(tseitin_lib PUBLIC include)
 
 add_executable(tseitin_app src/main.cpp)
