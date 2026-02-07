@@ -39,6 +39,9 @@ should require a minimal **information budget** determined by the structure of t
 
 This work presents *conjectures and preliminary observations*, not formal proofs.
 
+Status: Active experimental branch (C++ pipeline + Kissat).
+This branch supersedes the Python-based experiments in main.
+
 ---
 
 ## 🔑 Core Hypothesis: The Spectral Predictor `\hat{deg}(G)`
