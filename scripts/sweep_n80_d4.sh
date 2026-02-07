@@ -2,7 +2,7 @@
 set -e
 
 OUT=/tmp/sweep
-BIN=./code/cpp/build/run_kissat
+BIN=./code/cpp/src/run_kissat
 
 
 rm -rf "$OUT"
