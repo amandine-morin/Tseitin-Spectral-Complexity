@@ -7,6 +7,9 @@
 #include <fstream>
 #include <stdexcept>
 
+KissatRunner::KissatRunner(std::string kissat_path)
+    : kissat_path_(std::move(kissat_path)) {}
+
 std::string KissatRunner::windowsToWslPath(const std::string& windows_path) {
     if (windows_path.size() < 2 || windows_path[1] != ':') {
         // Already looks like a Unix path.
@@ -47,7 +50,7 @@ KissatResult KissatRunner::run(const std::string& input_path,
 
     // Build the Kissat command with timeout.
     // Kissat supports: --time=<seconds>
-    std::string command = "wsl /home/dinah/kissat/build/kissat ";
+    std::string command = "wsl \"" + kissat_path_ + "\" ";
     command += "--time=" + std::to_string(effective_timeout) + " ";
     command += "\"" + wsl_input + "\" > \"" + wsl_output + "\"";
 
