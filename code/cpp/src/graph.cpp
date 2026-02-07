@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <numeric>
 #include <stdexcept>
+#include <string>
 
 Graph::Graph(int vertices, int degree)
     : vertex_count_(vertices), degree_(degree), incidence_(vertices) {
@@ -22,6 +23,9 @@ Graph::Graph(int vertices, int degree)
 }
 
 Graph::Graph(int vertices, int degree, std::mt19937& rng)
+    : Graph(vertices, degree, rng, Mode::Circulant) {}
+
+Graph::Graph(int vertices, int degree, std::mt19937& rng, Mode mode)
     : vertex_count_(vertices), degree_(degree), incidence_(vertices) {
     if (vertices <= 0) {
         throw std::invalid_argument("Number of vertices must be positive");
@@ -35,12 +39,23 @@ Graph::Graph(int vertices, int degree, std::mt19937& rng)
     if (degree_ % 2 == 1 && vertex_count_ % 2 == 1) {
         throw std::invalid_argument("For odd degree, the vertex count must be even");
     }
-    buildRegularGraph();
 
-    std::vector<int> permutation(vertex_count_);
-    std::iota(permutation.begin(), permutation.end(), 0);
-    std::shuffle(permutation.begin(), permutation.end(), rng);
-    relabelVertices(permutation);
+    switch (mode) {
+        case Mode::Circulant: {
+            buildRegularGraph();
+
+            std::vector<int> permutation(vertex_count_);
+            std::iota(permutation.begin(), permutation.end(), 0);
+            std::shuffle(permutation.begin(), permutation.end(), rng);
+            relabelVertices(permutation);
+            return;
+        }
+        case Mode::ConfigModel:
+            buildConfigurationModelGraph(rng);
+            return;
+        default:
+            throw std::invalid_argument("Unknown Graph::Mode");
+    }
 }
 
 void Graph::addEdge(int u, int v) {
@@ -79,6 +94,55 @@ void Graph::buildRegularGraph() {
             }
         }
     }
+}
+
+void Graph::buildConfigurationModelGraph(std::mt19937& rng) {
+    constexpr int kMaxRetries = 1000;
+    std::vector<int> stubs;
+    stubs.reserve(static_cast<size_t>(vertex_count_) * degree_);
+
+    for (int attempt = 0; attempt < kMaxRetries; ++attempt) {
+        edges_.clear();
+        for (auto& vec : incidence_) {
+            vec.clear();
+        }
+
+        stubs.clear();
+        for (int v = 0; v < vertex_count_; ++v) {
+            for (int i = 0; i < degree_; ++i) {
+                stubs.push_back(v);
+            }
+        }
+
+        std::shuffle(stubs.begin(), stubs.end(), rng);
+
+        bool invalid = false;
+        for (size_t i = 0; i < stubs.size(); i += 2) {
+            int u = stubs[i];
+            int v = stubs[i + 1];
+            if (u == v) {
+                invalid = true;
+                break;
+            }
+            if (u > v) {
+                std::swap(u, v);
+            }
+            if (std::find(edges_.begin(), edges_.end(), Edge{u, v}) != edges_.end()) {
+                invalid = true;
+                break;
+            }
+            addEdge(u, v);
+        }
+
+        if (!invalid) {
+            return;
+        }
+    }
+
+    throw std::runtime_error(
+        "Failed to generate simple d-regular graph using configuration model for n=" +
+        std::to_string(vertex_count_) + ", d=" + std::to_string(degree_) +
+        ", retries=" + std::to_string(kMaxRetries));
 }
 
 void Graph::relabelVertices(const std::vector<int>& permutation) {
