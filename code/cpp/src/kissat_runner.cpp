@@ -77,7 +77,9 @@ KissatResult KissatRunner::run(const std::string& input_path,
     int exit_status = code;
 
 #ifndef _WIN32
-    #include <sys/wait.h>
+    if (code == -1) {
+        throw std::runtime_error("system() failed for command: " + command);
+    }
     if (WIFEXITED(code)) {
         exit_status = WEXITSTATUS(code);
     } else if (WIFSIGNALED(code)) {
