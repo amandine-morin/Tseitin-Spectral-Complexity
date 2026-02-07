@@ -49,11 +49,9 @@ KissatResult KissatRunner::run(const std::string& input_path,
     // Kissat supports: --time=<seconds>
     std::string kissat = kissat_path_.empty() ? "kissat" : kissat_path_;
     std::string command;
-
 #ifdef _WIN32
     std::string wsl_input = windowsToWslPath(input_path);
     std::string wsl_output = windowsToWslPath(output_path);
-
     command = "wsl \"" + kissat + "\" ";
     command += "--time=" + std::to_string(effective_timeout) + " ";
     command += "\"" + wsl_input + "\" > \"" + wsl_output + "\"";
@@ -67,8 +65,12 @@ KissatResult KissatRunner::run(const std::string& input_path,
     int code = std::system(command.c_str());
     auto end = std::chrono::steady_clock::now();
 
-    // FAIL FAST: no silent solver failures
-    if (code != 0) {
+    // Fail fast on unexpected solver failures.
+    // SAT solver conventions:
+    //   10 = SAT
+    //   20 = UNSAT
+    //   0  = success (some builds)
+    if (code != 0 && code != 10 && code != 20) {
         throw std::runtime_error(
             "Kissat command failed (exit code " + std::to_string(code) + "): " + command);
     }
