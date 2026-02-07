@@ -67,7 +67,7 @@ KissatResult KissatRunner::run(const std::string& input_path,
     int code = std::system(command.c_str());
     auto end = std::chrono::steady_clock::now();
 
-    // 🚨 FAIL FAST: no silent solver failures
+    // FAIL FAST: no silent solver failures
     if (code != 0) {
         throw std::runtime_error(
             "Kissat command failed (exit code " + std::to_string(code) + "): " + command);
