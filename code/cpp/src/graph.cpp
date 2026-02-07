@@ -39,6 +39,7 @@ Graph::Graph(int vertices, int degree, std::mt19937& rng, Mode mode)
     if (degree_ % 2 == 1 && vertex_count_ % 2 == 1) {
         throw std::invalid_argument("For odd degree, the vertex count must be even");
     }
+
     switch (mode) {
         case Mode::Circulant: {
             buildRegularGraph();
