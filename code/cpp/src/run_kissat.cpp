@@ -169,5 +169,14 @@ int main(int argc, char** argv) {
     std::cout << "cnf_hash: " << cnf_hash_hex << "\n";
     std::cout << "runtime_ms: " << runtime_ms << "\n";
 
+    std::cout << "solve_status: " << (result.timed_out ? "UNKNOWN"
+                        : (result.exit_code == 10 ? "SAT"
+                        : (result.exit_code == 20 ? "UNSAT" : "OK")))
+          << "\n";
+
+    if (result.timed_out) {
+        return 124; // conventional timeout code
+    }
     return result.exit_code;
+
 }
