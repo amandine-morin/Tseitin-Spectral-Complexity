@@ -97,16 +97,18 @@ KissatResult KissatRunner::run(const std::string& input_path,
             ", raw system()=" + std::to_string(code) + "): " + command);
     }
 
-    // Detect timeout by scanning Kissat's output for the word "timeout".
+    // Determine result status from the DIMACS result line.
+    // Kissat prints one of: "s SATISFIABLE", "s UNSATISFIABLE", or "s UNKNOWN".
     result.timed_out = false;
     {
         std::ifstream in(output_path);
         if (in) {
             std::string line;
             while (std::getline(in, line)) {
-                if (line.find("timeout") != std::string::npos ||
-                    line.find("time limit") != std::string::npos) {
-                    result.timed_out = true;
+                if (line.rfind("s ", 0) == 0) { // starts with "s "
+                    if (line.find("UNKNOWN") != std::string::npos) {
+                        result.timed_out = true; // treat UNKNOWN as censored/timeout
+                    }
                     break;
                 }
             }
