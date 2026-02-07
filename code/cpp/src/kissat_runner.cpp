@@ -7,6 +7,9 @@
 #include <fstream>
 #include <stdexcept>
 
+KissatRunner::KissatRunner(std::string kissat_path)
+    : kissat_path_(std::move(kissat_path)) {}
+
 std::string KissatRunner::windowsToWslPath(const std::string& windows_path) {
     if (windows_path.size() < 2 || windows_path[1] != ':') {
         // Already looks like a Unix path.
@@ -36,9 +39,6 @@ KissatResult KissatRunner::run(const std::string& input_path,
     KissatResult result;
     result.output_path = output_path;
 
-    std::string wsl_input = windowsToWslPath(input_path);
-    std::string wsl_output = windowsToWslPath(output_path);
-
     // Use a default timeout if none is provided or if a non-positive value is given.
     int effective_timeout = timeout_seconds;
     if (effective_timeout <= 0) {
@@ -47,13 +47,28 @@ KissatResult KissatRunner::run(const std::string& input_path,
 
     // Build the Kissat command with timeout.
     // Kissat supports: --time=<seconds>
-    std::string command = "wsl /home/dinah/kissat/build/kissat ";
+    std::string kissat = kissat_path_.empty() ? "kissat" : kissat_path_;
+    std::string command;
+#ifdef _WIN32
+    std::string wsl_input = windowsToWslPath(input_path);
+    std::string wsl_output = windowsToWslPath(output_path);
+    command = "wsl \"" + kissat + "\" ";
     command += "--time=" + std::to_string(effective_timeout) + " ";
     command += "\"" + wsl_input + "\" > \"" + wsl_output + "\"";
+#else
+    command = "\"" + kissat + "\" ";
+    command += "--time=" + std::to_string(effective_timeout) + " ";
+    command += "\"" + input_path + "\" > \"" + output_path + "\"";
+#endif
 
     auto start = std::chrono::steady_clock::now();
     int code = std::system(command.c_str());
     auto end = std::chrono::steady_clock::now();
+
+    if (code != 0) {
+        throw std::runtime_error(
+            "Kissat command failed (exit code " + std::to_string(code) + "): " + command);
+    }
 
     result.exit_code = code;
     result.runtime_ms =
