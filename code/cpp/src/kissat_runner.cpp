@@ -6,6 +6,13 @@
 #include <cstdlib>
 #include <fstream>
 #include <stdexcept>
+#ifndef _WIN32
+#include <signal.h>
+#include <sys/wait.h>
+#endif
+
+KissatRunner::KissatRunner(std::string kissat_path)
+    : kissat_path_(std::move(kissat_path)) {}
 
 KissatRunner::KissatRunner(std::string kissat_path)
     : kissat_path_(std::move(kissat_path)) {}
