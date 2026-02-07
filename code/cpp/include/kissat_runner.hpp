@@ -11,6 +11,7 @@ struct KissatResult {
 
 class KissatRunner {
 public:
+    explicit KissatRunner(std::string kissat_path = "/home/dinah/kissat/build/kissat");
     // Convert Windows-style paths (e.g., C:\\tmp\\file.cnf) to WSL paths (/mnt/c/tmp/file.cnf).
     static std::string windowsToWslPath(const std::string& windows_path);
 
@@ -19,4 +20,7 @@ public:
     KissatResult run(const std::string& input_path,
                      const std::string& output_path,
                      int timeout_seconds = -1) const;
+
+private:
+    std::string kissat_path_;
 };

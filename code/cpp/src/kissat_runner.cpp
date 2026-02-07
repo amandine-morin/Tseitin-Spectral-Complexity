@@ -7,6 +7,9 @@
 #include <fstream>
 #include <stdexcept>
 
+KissatRunner::KissatRunner(std::string kissat_path)
+    : kissat_path_(std::move(kissat_path)) {}
+
 std::string KissatRunner::windowsToWslPath(const std::string& windows_path) {
     if (windows_path.size() < 2 || windows_path[1] != ':') {
         // Already looks like a Unix path.
