@@ -25,7 +25,7 @@
 % Disable math macros inside PDF bookmarks
 \pdfstringdefDisableCommands{%
   \def\gap{lambda2}%
-  \def\hdeg{deg}%
+  \def\hdeg{hdeg}%
   \def\nL{L}%
 }
 
@@ -51,7 +51,7 @@ A Physics-Motivated Exploration}\\
 \footnote{Research conducted independently.}%
 \footnote{No institutional affiliation.}}
 
-\date{November 27, 2025}
+\date{Revised February 2026}
 
 \begin{document}
 \maketitle
@@ -81,7 +81,7 @@ eigenvalue of the normalized Laplacian~\cite{Chung1997}.
 We formulate corresponding Kolmogorov-type information conjectures~\cite{LiVitanyi},
 conjectural decision-tree lower bounds reflecting expansion~\cite{HooryLinialWigderson},
 and a link to Polynomial Calculus degree~\cite{Razborov1998}.
-Empirical data (embedded PGFPlots) demonstrates a qualitative correlation between $\hdeg(G)$ and
+Empirical data (embedded PGFPlots) suggests a qualitative correlation between $\hdeg(G)$ and
 practical SAT-solving time on Tseitin formulas.
 % ---- UPDATED (minimal) ----
 In addition, we report updated controlled experiments obtained using a reproducible C++ pipeline
@@ -139,6 +139,25 @@ as conjectured lower bounds in decision-tree and algebraic proof models.
 Our goal here is not to present a complete lower-bound proof, but to propose a coherent
 structural scale that can be probed both analytically and empirically, and which appears
 to interpolate naturally between known behaviors on cycles, grids, expanders and dense graphs.
+
+Even when the degree is fixed, the global geometry of the constraint graph can vary
+significantly depending on the generation model, as illustrated in
+Figure~\ref{fig:graph_models_contrast}.
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=0.48\linewidth]{figures/circulant_n80_d4_s0.png}\hfill
+  \includegraphics[width=0.48\linewidth]{figures/config_n80_d4_s3.png}
+  \caption{
+  Degree-regular graphs with identical parameters ($n=80$, $d=4$) generated using two
+  different models.
+  \textbf{Left:} circulant graph (highly symmetric, homogeneous geometry).
+  \textbf{Right:} configuration-model graph (irregular geometry with local bottlenecks).
+  Despite identical degree sequences, the resulting structures differ substantially at the geometric level.
+  }
+  \label{fig:graph_models_contrast}
+\end{figure}
+\FloatBarrier
 
 % ============================
 \section{Graphs, spectrum, and conventions}
@@ -312,6 +331,8 @@ Configuration model & 5 & timeout & 60 s & consistently hard \\
 
 \subsection*{Experimental setup and reproducibility}
 
+We distinguish between legacy MiniSat-based illustrative experiments
+and the updated Kissat-based controlled pipeline introduced above.
 The experiments are illustrative rather than benchmark-oriented.
 A Python script generates the graph, encodes Tseitin constraints, and invokes a
 MiniSat binary with default settings. Wall-clock times are measured with a
