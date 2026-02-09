@@ -18,7 +18,7 @@ BibTeX:
 @software{amandine_tseitin_spectral_2025,
   author       = {Amandine Morin},
   title        = {{amandine-morin/Tseitin-Spectral-Complexity: Initial Public Version}},
-  month        = jan,
+  month        = nov,
   year         = 2025,
   publisher    = {Zenodo},
   version      = {v2.0.0},
