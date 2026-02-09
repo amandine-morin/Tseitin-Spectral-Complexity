@@ -11,12 +11,13 @@ public:
 
     enum class Mode {
         Circulant,
-        ConfigModel
+        ConfigModel,
+        WattsStrogatz
     };
 
     Graph(int vertices, int degree);
     Graph(int vertices, int degree, std::mt19937& rng);
-    Graph(int vertices, int degree, std::mt19937& rng, Mode mode);
+    Graph(int vertices, int degree, std::mt19937& rng, Mode mode, double p = 0.0);
 
     int vertexCount() const { return vertex_count_; }
     int degree() const { return degree_; }
@@ -30,11 +31,16 @@ public:
 private:
     int vertex_count_;
     int degree_;
+    Mode mode_ = Mode::Circulant;
     std::vector<Edge> edges_;
     std::vector<std::vector<int>> incidence_;
 
     void buildRegularGraph();
     void buildConfigurationModelGraph(std::mt19937& rng);
+    void buildWattsStrogatzGraph(std::mt19937& rng, double p);
     void addEdge(int u, int v);
+    void finalizeGraph();
+    void validateSimpleRegularOrThrow() const;
+    void rebuildIncidence();
     void relabelVertices(const std::vector<int>& permutation);
 };

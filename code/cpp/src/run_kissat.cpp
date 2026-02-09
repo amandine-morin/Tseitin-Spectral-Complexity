@@ -2,10 +2,12 @@
 #include "kissat_runner.hpp"
 #include "tseitin_cnf.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <numeric>
 #include <random>
@@ -60,14 +62,59 @@ struct RunOptions {
     int vertices = -1;
     int degree = -1;
     uint32_t seed = 0;
+    double p = 0.0;
     std::filesystem::path out_dir = "out";
     std::string kissat_path = "/home/dinah/kissat/build/kissat";
     Graph::Mode graph_mode = Graph::Mode::Circulant;
 };
 
+std::string graphModeToString(Graph::Mode mode) {
+    switch (mode) {
+        case Graph::Mode::Circulant:
+            return "circulant";
+        case Graph::Mode::ConfigModel:
+            return "config_model";
+        case Graph::Mode::WattsStrogatz:
+            return "watts_strogatz";
+        default:
+            return "unknown";
+    }
+}
+
+std::string formatProbabilityForName(double p) {
+    std::ostringstream stream;
+    stream << std::fixed << std::setprecision(6) << p;
+    std::string text = stream.str();
+    for (char& ch : text) {
+        if (ch == '.') {
+            ch = 'p';
+        }
+    }
+    return text;
+}
+
+uint64_t hashEdgesCanonical(const Graph& graph) {
+    constexpr uint64_t kOffsetBasis = 14695981039346656037ULL;
+    constexpr uint64_t kPrime = 1099511628211ULL;
+    std::vector<Graph::Edge> edges = graph.edges();
+    std::sort(edges.begin(), edges.end());
+    uint64_t hash = kOffsetBasis;
+    for (const auto& edge : edges) {
+        uint64_t packed =
+            (static_cast<uint64_t>(edge.first) << 32) |
+            static_cast<uint64_t>(edge.second);
+        for (int shift = 0; shift < 64; shift += 8) {
+            hash ^= static_cast<unsigned char>((packed >> shift) & 0xFF);
+            hash *= kPrime;
+        }
+    }
+    return hash;
+}
+
 RunOptions parseArgs(int argc, char** argv) {
     RunOptions options;
     bool seed_provided = false;
+    bool p_provided = false;
 
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
@@ -87,6 +134,12 @@ RunOptions parseArgs(int argc, char** argv) {
             }
             options.seed = static_cast<uint32_t>(std::stoul(argv[++i]));
             seed_provided = true;
+        } else if (arg == "--p") {
+            if (i + 1 >= argc) {
+                throw std::invalid_argument("Missing value for --p");
+            }
+            options.p = std::stod(argv[++i]);
+            p_provided = true;
         } else if (arg == "--outdir") {
             if (i + 1 >= argc) {
                 throw std::invalid_argument("Missing value for --outdir");
@@ -106,6 +159,8 @@ RunOptions parseArgs(int argc, char** argv) {
                 options.graph_mode = Graph::Mode::Circulant;
             } else if (mode == "config_model") {
                 options.graph_mode = Graph::Mode::ConfigModel;
+            } else if (mode == "watts_strogatz") {
+                options.graph_mode = Graph::Mode::WattsStrogatz;
             } else {
                 throw std::invalid_argument("Unknown graph mode: " + mode);
             }
@@ -117,11 +172,23 @@ RunOptions parseArgs(int argc, char** argv) {
     if (options.vertices <= 0 || options.degree < 0) {
         throw std::invalid_argument(
             "Usage: run_kissat --n <N> --d <D> [--seed <S>] [--outdir <PATH>]"
-            " [--kissat <PATH>] [--graph_mode <circulant|config_model>]");
+            " [--kissat <PATH>] [--graph_mode <circulant|config_model|watts_strogatz>]"
+            " [--p <PROB>]");
     }
 
     if (!seed_provided) {
         options.seed = 0;
+    }
+
+    if (options.graph_mode == Graph::Mode::WattsStrogatz) {
+        if (!p_provided) {
+            throw std::invalid_argument("Missing --p for watts_strogatz graph mode");
+        }
+        if (options.p < 0.0 || options.p > 1.0) {
+            throw std::invalid_argument("--p must be in [0, 1]");
+        }
+    } else if (p_provided) {
+        throw std::invalid_argument("--p is only valid with --graph_mode watts_strogatz");
     }
 
     return options;
@@ -139,7 +206,22 @@ int main(int argc, char** argv) {
     }
 
     std::mt19937 rng(options.seed);
-    Graph graph(options.vertices, options.degree, rng, options.graph_mode);
+    Graph graph(options.vertices, options.degree, rng, options.graph_mode, options.p);
+    if (options.graph_mode == Graph::Mode::WattsStrogatz) {
+        std::mt19937 check_rng(options.seed);
+        Graph check_graph(options.vertices, options.degree, check_rng, options.graph_mode, options.p);
+        if (hashEdgesCanonical(check_graph) != hashEdgesCanonical(graph)) {
+            throw std::runtime_error("Determinism check failed for Watts-Strogatz graph generation");
+        }
+
+        std::mt19937 ws_zero_rng(options.seed);
+        Graph ws_zero(options.vertices, options.degree, ws_zero_rng, Graph::Mode::WattsStrogatz, 0.0);
+        std::mt19937 circ_rng(options.seed);
+        Graph circ(options.vertices, options.degree, circ_rng, Graph::Mode::Circulant);
+        if (hashEdgesCanonical(ws_zero) != hashEdgesCanonical(circ)) {
+            throw std::runtime_error("Watts-Strogatz p=0 graph does not match circulant mode");
+        }
+    }
     auto charges = buildRandomCharges(options.vertices, rng);
 
     TseitinCnfBuilder builder;
@@ -147,7 +229,11 @@ int main(int argc, char** argv) {
 
     std::string base_name = "run_kissat_n" + std::to_string(options.vertices) +
         "_d" + std::to_string(options.degree) +
-        "_s" + std::to_string(options.seed);
+        "_s" + std::to_string(options.seed) +
+        "_m" + graphModeToString(options.graph_mode);
+    if (options.graph_mode == Graph::Mode::WattsStrogatz) {
+        base_name += "_p" + formatProbabilityForName(options.p);
+    }
     std::filesystem::path cnf_path = options.out_dir / (base_name + ".cnf");
     std::filesystem::path solver_output = options.out_dir / (base_name + ".out");
     std::filesystem::create_directories(options.out_dir);
