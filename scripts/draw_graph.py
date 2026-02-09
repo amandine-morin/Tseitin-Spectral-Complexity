@@ -29,7 +29,9 @@ def main():
     pos = nx.spring_layout(G, seed=0, k=0.22, iterations=300)
 
     plt.figure(figsize=(10, 10))
-    nx.draw_networkx_edges(G, pos, alpha=0.7, width=0.8)
+
+    nx.draw_networkx_edges(G, pos, width=0.8)
+
     nx.draw_networkx_nodes(
         G, pos,
         node_color="#f08080",
@@ -37,7 +39,9 @@ def main():
         edgecolors="black",
         linewidths=0.5
     )
-    nx.draw_networkx_labels(G, pos, font_size=8)
+
+    # Optional: comment out labels for cleaner figures
+    # nx.draw_networkx_labels(G, pos, font_size=6)
 
     plt.title(
         f"{args.mode} graph (n={args.n}, d={args.d}, seed={args.seed})",
@@ -46,8 +50,9 @@ def main():
 
     plt.axis("off")
     plt.tight_layout()
-    plt.savefig(args.out, dpi=300)
+    plt.savefig(args.out, bbox_inches="tight")
     plt.close()
+
 
 
 if __name__ == "__main__":
