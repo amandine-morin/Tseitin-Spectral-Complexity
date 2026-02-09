@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-OUT=/tmp/sweep
+OUT=/tmp/sweep_ws
 BIN=./code/cpp/build/run_kissat
 KISSAT_BIN=${KISSAT_BIN:-/home/dinah/kissat/build/kissat}
 
@@ -10,7 +10,7 @@ mkdir -p "$OUT"
 
 if [[ ! -x "$KISSAT_BIN" ]]; then
   echo "Kissat binary not found at $KISSAT_BIN." >&2
-  echo "Example: KISSAT_BIN=/path/to/kissat bash scripts/sweep_n80_d4.sh" >&2
+  echo "Example: KISSAT_BIN=/path/to/kissat bash scripts/sweep_ws_n80_d4.sh" >&2
   exit 1
 fi
 
@@ -21,16 +21,19 @@ fi
 
 echo "mode,n,d,p,seed,exit,cnf_hash,runtime_ms,status"
 
-for mode in circulant config_model; do
-  p_value=0
+mode=watts_strogatz
+n=80
+d=4
+
+for p in 0 0.01 0.05 0.1 0.2 0.5 1.0; do
   for seed in $(seq 0 19); do
-    out="$OUT/${mode}_s${seed}"
+    out="$OUT/${mode}_p${p}_s${seed}"
     mkdir -p "$out"
 
-    log="$OUT/log_${mode}_s${seed}.txt"
+    log="$OUT/log_${mode}_p${p}_s${seed}.txt"
 
     set +e
-    "$BIN" --n 80 --d 4 --seed "$seed" --graph_mode "$mode" --outdir "$out" --kissat "$KISSAT_BIN" > "$log"
+    "$BIN" --n "$n" --d "$d" --seed "$seed" --graph_mode "$mode" --p "$p" --outdir "$out" --kissat "$KISSAT_BIN" > "$log"
     exitcode=$?
     set -e
 
@@ -38,6 +41,6 @@ for mode in circulant config_model; do
     ms=$(awk '/^runtime_ms:/{print $2; exit}' "$log" || true)
     status=$(awk '/^solve_status:/{print $2; exit}' "$log" || true)
 
-    echo "$mode,80,4,$p_value,$seed,$exitcode,$cnf,$ms,$status"
+    echo "$mode,$n,$d,$p,$seed,$exitcode,$cnf,$ms,$status"
   done
 done
