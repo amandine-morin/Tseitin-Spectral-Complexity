@@ -10,7 +10,7 @@ mkdir -p "$OUT"
 echo "mode,seed,exit,cnf_hash,runtime_ms,status"
 
 for mode in circulant config_model; do
-  for seed in 0 1 2 3 4; do
+  for seed in $(seq 0 49); do
     out="$OUT/${mode}_s${seed}"
     mkdir -p "$out"
 
