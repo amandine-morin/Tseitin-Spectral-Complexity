@@ -1,0 +1,141 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# =========================
+# Config (edit if needed)
+# =========================
+N=80
+D=4
+TIMEOUT_S=60
+
+# Watts–Strogatz p values (keep aligned with your LaTeX table)
+P_LIST=("0" "0.01" "0.05" "0.10" "0.20" "0.50" "1.00")
+SEEDS=$(seq 0 19)
+
+# Paths
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+RUNNER="${ROOT_DIR}/code/cpp/build/run_kissat"   # <-- adjust if your build path differs
+OUTDIR="${ROOT_DIR}/work/ws_n${N}_d${D}_minisat"
+CSV="${OUTDIR}/ws_n${N}_d${D}_minisat.csv"
+
+# Minisat
+MINISAT_BIN="${MINISAT_BIN:-minisat}"
+
+mkdir -p "${OUTDIR}"
+
+# =========================
+# Helpers
+# =========================
+now_ms() {
+  # Milliseconds since epoch
+  python3 - <<'PY'
+import time
+print(int(time.time() * 1000))
+PY
+}
+
+# Extract "cnf_hash: <HEX>" if present in runner output
+extract_cnf_hash() {
+  # stdin -> stdout
+  grep -Eo 'cnf_hash:[[:space:]]*[0-9a-fA-F]+' | head -n1 | awk '{print $2}'
+}
+
+# Try to extract a CNF path from runner output (optional)
+extract_cnf_path() {
+  # If you printed something like: "cnf_path: /path/to/file.cnf"
+  grep -Eo 'cnf_path:[[:space:]]*\S+\.cnf' | head -n1 | awk '{print $2}'
+}
+
+# =========================
+# CSV header
+# =========================
+echo "solver,p,seed,exit,cnf_hash,runtime_ms,status" > "${CSV}"
+
+# =========================
+# Main loop
+# =========================
+for p in "${P_LIST[@]}"; do
+  for seed in ${SEEDS}; do
+
+    # Unique per (p,seed)
+    RUN_OUTDIR="${OUTDIR}/p${p}_s${seed}"
+    mkdir -p "${RUN_OUTDIR}"
+
+    # 1) Generate CNF (deterministic). We DO NOT run Kissat here.
+    # We just reuse your generator pipeline.
+    #
+    # IMPORTANT: adjust flags to match your CLI if needed.
+    #
+    # Expected to produce:
+    # - a CNF in RUN_OUTDIR
+    # - stdout containing at least cnf_hash: <HEX>
+    #
+    GEN_LOG="${RUN_OUTDIR}/gen.log"
+    set +e
+    "${RUNNER}" \
+      --n "${N}" --d "${D}" --seed "${seed}" \
+      --graph_mode watts_strogatz \
+      --p "${p}" \
+      --outdir "${RUN_OUTDIR}" \
+      --kissat "" \
+      > "${GEN_LOG}" 2>&1
+    GEN_CODE=$?
+    set -e
+
+    CNF_HASH="$(cat "${GEN_LOG}" | extract_cnf_hash || true)"
+    CNF_PATH="$(cat "${GEN_LOG}" | extract_cnf_path || true)"
+
+    # 2) Locate CNF if not explicitly printed
+    if [[ -z "${CNF_PATH}" ]]; then
+      # ---- Option A: pick the newest .cnf in the run folder
+      # If your outdir contains exactly one CNF, this is perfect.
+      CNF_PATH="$(ls -1t "${RUN_OUTDIR}"/*.cnf 2>/dev/null | head -n1 || true)"
+    fi
+
+    if [[ -z "${CNF_PATH}" ]]; then
+      # Could not find CNF: log as error row and continue
+      echo "minisat,${p},${seed},${GEN_CODE},${CNF_HASH},0,cnf_missing" >> "${CSV}"
+      continue
+    fi
+
+    # 3) Run MiniSat with a timeout
+    RES_OUT="${RUN_OUTDIR}/minisat.out"
+    SOL_OUT="${RUN_OUTDIR}/minisat.sol"
+    t0="$(now_ms)"
+    set +e
+    timeout "${TIMEOUT_S}s" "${MINISAT_BIN}" "${CNF_PATH}" "${SOL_OUT}" > "${RES_OUT}" 2>&1
+    SOLVER_CODE=$?
+    set -e
+    t1="$(now_ms)"
+    RUNTIME_MS=$((t1 - t0))
+
+    # 4) Classify status
+    # - timeout returns 124 from GNU timeout
+    # - Minisat: 10 SAT, 20 UNSAT (but output may vary, so we allow both)
+    STATUS="unknown"
+    if [[ "${SOLVER_CODE}" -eq 124 ]]; then
+      STATUS="timeout"
+      RUNTIME_MS=$((TIMEOUT_S * 1000))
+    elif [[ "${SOLVER_CODE}" -eq 10 ]]; then
+      STATUS="sat"
+    elif [[ "${SOLVER_CODE}" -eq 20 ]]; then
+      STATUS="unsat"
+    else
+      # Some builds may return 0 and print "UNSATISFIABLE"
+      if grep -qi "UNSAT" "${RES_OUT}"; then
+        STATUS="unsat"
+      elif grep -qi "SAT" "${RES_OUT}"; then
+        STATUS="sat"
+      else
+        STATUS="error"
+      fi
+    fi
+
+    # 5) Append CSV row
+    echo "minisat,${p},${seed},${SOLVER_CODE},${CNF_HASH},${RUNTIME_MS},${STATUS}" >> "${CSV}"
+
+  done
+done
+
+# Done
+echo "Wrote: ${CSV}"
