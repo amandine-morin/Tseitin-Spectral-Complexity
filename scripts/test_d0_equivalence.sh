@@ -1,4 +1,3 @@
-cat > scripts/test_d0_equivalence.sh <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -31,6 +30,3 @@ if [[ "$circ_hash" != "$ws_hash" ]]; then
 fi
 
 echo "OK: d=0 equivalence holds"
-EOF
-
-chmod +x scripts/test_d0_equivalence.sh

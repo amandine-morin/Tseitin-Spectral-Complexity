@@ -1,4 +1,3 @@
-cat > scripts/build_cpp.sh <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -11,6 +10,3 @@ if [[ ! -d "$BUILD_DIR" ]] || [[ ! -f "$BUILD_DIR/CMakeCache.txt" ]]; then
 fi
 
 cmake --build "$BUILD_DIR" -j
-EOF
-
-chmod +x scripts/build_cpp.sh
