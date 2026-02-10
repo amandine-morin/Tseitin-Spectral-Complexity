@@ -58,13 +58,86 @@ std::string hashToHex(uint64_t hash) {
     return stream.str();
 }
 
+std::string trim(const std::string& text) {
+    const std::string whitespace = " \t\r\n";
+    const auto start = text.find_first_not_of(whitespace);
+    if (start == std::string::npos) {
+        return "";
+    }
+    const auto end = text.find_last_not_of(whitespace);
+    return text.substr(start, end - start + 1);
+}
+
+struct SolverConfig {
+    SatSolver solver = SatSolver::Kissat;
+    int timeout_seconds = 60;
+    std::string kissat_path = "kissat";
+    std::string minisat_path = "minisat";
+};
+
+SolverConfig loadSolverConfig(const std::filesystem::path& config_path,
+                              bool required) {
+    SolverConfig config;
+
+    std::ifstream in(config_path);
+    if (!in.is_open()) {
+        if (required) {
+            throw std::runtime_error("Failed to open solver config file: " + config_path.string());
+        }
+        return config;
+    }
+
+    std::string line;
+    int line_number = 0;
+    while (std::getline(in, line)) {
+        ++line_number;
+        std::string content = trim(line);
+        if (content.empty() || content[0] == '#') {
+            continue;
+        }
+
+        const std::size_t eq = content.find('=');
+        if (eq == std::string::npos) {
+            throw std::runtime_error("Invalid config line " + std::to_string(line_number) +
+                                     " in " + config_path.string() +
+                                     ": expected key=value");
+        }
+
+        const std::string key = trim(content.substr(0, eq));
+        const std::string value = trim(content.substr(eq + 1));
+
+        if (key == "solver") {
+            config.solver = KissatRunner::solverFromString(value);
+        } else if (key == "timeout_seconds") {
+            config.timeout_seconds = std::stoi(value);
+            if (config.timeout_seconds <= 0) {
+                throw std::runtime_error("timeout_seconds must be > 0");
+            }
+        } else if (key == "kissat_path") {
+            config.kissat_path = value;
+        } else if (key == "minisat_path") {
+            config.minisat_path = value;
+        } else {
+            throw std::runtime_error("Unknown config key '" + key + "' in " + config_path.string());
+        }
+    }
+
+    return config;
+}
+
 struct RunOptions {
     int vertices = -1;
     int degree = -1;
     uint32_t seed = 0;
     double p = 0.0;
     std::filesystem::path out_dir = "out";
-    std::string kissat_path = "/home/dinah/kissat/build/kissat";
+    std::filesystem::path config_path = "code/cpp/solver_config.ini";
+    bool config_overridden = false;
+    SatSolver solver = SatSolver::Kissat;
+    bool solver_overridden = false;
+    std::string solver_path_override;
+    int timeout_seconds = -1;
+    bool timeout_overridden = false;
     Graph::Mode graph_mode = Graph::Mode::Circulant;
 };
 
@@ -145,11 +218,39 @@ RunOptions parseArgs(int argc, char** argv) {
                 throw std::invalid_argument("Missing value for --outdir");
             }
             options.out_dir = argv[++i];
+        } else if (arg == "--config") {
+            if (i + 1 >= argc) {
+                throw std::invalid_argument("Missing value for --config");
+            }
+            options.config_path = argv[++i];
+            options.config_overridden = true;
+        } else if (arg == "--solver") {
+            if (i + 1 >= argc) {
+                throw std::invalid_argument("Missing value for --solver");
+            }
+            options.solver = KissatRunner::solverFromString(argv[++i]);
+            options.solver_overridden = true;
+        } else if (arg == "--solver-path") {
+            if (i + 1 >= argc) {
+                throw std::invalid_argument("Missing value for --solver-path");
+            }
+            options.solver_path_override = argv[++i];
+        } else if (arg == "--timeout") {
+            if (i + 1 >= argc) {
+                throw std::invalid_argument("Missing value for --timeout");
+            }
+            options.timeout_seconds = std::stoi(argv[++i]);
+            if (options.timeout_seconds <= 0) {
+                throw std::invalid_argument("--timeout must be > 0");
+            }
+            options.timeout_overridden = true;
         } else if (arg == "--kissat") {
             if (i + 1 >= argc) {
                 throw std::invalid_argument("Missing value for --kissat");
             }
-            options.kissat_path = argv[++i];
+            options.solver = SatSolver::Kissat;
+            options.solver_overridden = true;
+            options.solver_path_override = argv[++i];
         } else if (arg == "--graph_mode") {
             if (i + 1 >= argc) {
                 throw std::invalid_argument("Missing value for --graph_mode");
@@ -172,8 +273,9 @@ RunOptions parseArgs(int argc, char** argv) {
     if (options.vertices <= 0 || options.degree < 0) {
         throw std::invalid_argument(
             "Usage: run_kissat --n <N> --d <D> [--seed <S>] [--outdir <PATH>]"
-            " [--kissat <PATH>] [--graph_mode <circulant|config_model|watts_strogatz>]"
-            " [--p <PROB>]");
+            " [--config <PATH>] [--solver <kissat|minisat>] [--solver-path <PATH>]"
+            " [--timeout <SECONDS>] [--kissat <PATH>]"
+            " [--graph_mode <circulant|config_model|watts_strogatz>] [--p <PROB>]");
     }
 
     if (!seed_provided) {
@@ -203,6 +305,22 @@ int main(int argc, char** argv) {
     } catch (const std::exception& e) {
         std::cerr << "Argument error: " << e.what() << '\n';
         return 1;
+    }
+
+    SolverConfig config;
+    try {
+        config = loadSolverConfig(options.config_path, options.config_overridden);
+    } catch (const std::exception& e) {
+        std::cerr << "Config error: " << e.what() << '\n';
+        return 1;
+    }
+
+    const SatSolver active_solver = options.solver_overridden ? options.solver : config.solver;
+    const int active_timeout = options.timeout_overridden ? options.timeout_seconds : config.timeout_seconds;
+
+    std::string active_path = options.solver_path_override;
+    if (active_path.empty()) {
+        active_path = (active_solver == SatSolver::Kissat) ? config.kissat_path : config.minisat_path;
     }
 
     std::mt19937 rng(options.seed);
@@ -240,7 +358,7 @@ int main(int argc, char** argv) {
     TseitinCnfBuilder::writeDimacs(formula, cnf_path.string());
     std::string cnf_hash_hex = hashToHex(fnv1aHashFile(cnf_path));
 
-    KissatRunner runner(options.kissat_path);
+    KissatRunner runner(active_solver, active_path, active_timeout);
     auto t0 = std::chrono::steady_clock::now();
     KissatResult result = runner.run(cnf_path.string(), solver_output.string());
     auto t1 = std::chrono::steady_clock::now();
@@ -252,17 +370,22 @@ int main(int argc, char** argv) {
         runtime_ms = result.runtime_ms;
     }
 
+    std::cout << "solver: " << KissatRunner::solverToString(active_solver) << "\n";
+    std::cout << "solver_path: " << (active_path.empty() ? "PATH" : active_path) << "\n";
+    std::cout << "timeout_seconds: " << active_timeout << "\n";
     std::cout << "cnf_hash: " << cnf_hash_hex << "\n";
     std::cout << "runtime_ms: " << runtime_ms << "\n";
 
-    std::cout << "solve_status: " << (result.timed_out ? "UNKNOWN"
-                        : (result.exit_code == 10 ? "SAT"
-                        : (result.exit_code == 20 ? "UNSAT" : "OK")))
-          << "\n";
+    std::string solve_status = result.status_string;
+    if (solve_status == "OK") {
+        solve_status = result.timed_out ? "UNKNOWN"
+            : (result.exit_code == 10 ? "SAT"
+            : (result.exit_code == 20 ? "UNSAT" : "OK"));
+    }
+    std::cout << "solve_status: " << solve_status << "\n";
 
     if (result.timed_out) {
-        return 124; // conventional timeout code
+        return 124;
     }
     return result.exit_code;
-
 }

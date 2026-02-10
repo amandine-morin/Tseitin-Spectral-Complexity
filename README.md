@@ -208,7 +208,10 @@ cmake --build build --config Release
 ```
 
 ### Running Experiments
-1. Ensure the Kissat binary exists at `/home/dinah/kissat/build/kissat` inside WSL.
+1. Configure SAT solver settings in `code/cpp/solver_config.ini`:
+   - set `kissat_path` and `minisat_path` once
+   - set a uniform `timeout_seconds` for both solvers
+   - switch solver by editing one line only: `solver=kissat` or `solver=minisat`
 2. From a Developer Command Prompt (or VS Code terminal) at the repository root, run the built executable:
    ```
    build/Debug/tseitin_app.exe
@@ -220,8 +223,20 @@ cmake --build build --config Release
 3. The program will:
    - Build several d-regular graphs.
    - Generate Tseitin CNFs in `out/*.cnf`.
-   - Invoke Kissat via `wsl /home/dinah/kissat/build/kissat <input> > <output>`.
+   - Invoke the configured SAT solver (Kissat or Minisat).
    - Log results to `out/results.csv`.
+
+For the standalone generator/runner (`run_kissat`), you can use config or override at runtime:
+```bash
+# Config only
+code/cpp/build/run_kissat --n 80 --d 4 --config code/cpp/solver_config.ini
+
+# Override solver
+code/cpp/build/run_kissat --n 80 --d 4 --solver minisat --solver-path /usr/bin/minisat
+
+# Override timeout
+code/cpp/build/run_kissat --n 80 --d 4 --timeout 120
+```
 
 ### Notes
 - Windows paths are converted to WSL paths using a manual `C:\\...` → `/mnt/c/...` conversion to keep redirection working inside WSL.
