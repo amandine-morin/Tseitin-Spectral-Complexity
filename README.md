@@ -77,6 +77,21 @@ Small-scale experiments (up to `n = 80`) show:
 
 These results are **illustrative**, not statistically conclusive.
 
+### 🔄 Structural Sensitivity (Preliminary Observation)
+
+Initial experiments with Watts–Strogatz perturbations suggest a strong
+sensitivity of Tseitin hardness to small structural changes.
+
+Starting from a circulant graph (`p = 0`), even a very small rewiring
+probability (e.g. `p ≈ 0.01`) can lead to a sharp increase in solver runtime,
+often pushing instances from near-instant resolution to timeout regimes.
+
+This effect appears consistently across multiple SAT solvers (Kissat, Minisat),
+suggesting that it is not solver-specific but tied to structural properties
+of the underlying graph.
+
+These observations are preliminary and require further statistical validation.
+
 ### Quick Access
 
 - 📈 **Correlation Plot:**  

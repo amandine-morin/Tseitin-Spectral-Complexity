@@ -1,13 +1,19 @@
-.git/
-.venv/
-__pycache__/
-build/
-dist/
-node_modules/
+# Python
 venv/
-.DS_Store
-Thumbs.db
-*.bak*
-.env
+__pycache__/
+
+# Build
+code/cpp/build/
+
+# Results
+out/
+results_ws/
+results_ws_multiseed/
+
+# LaTeX
+*.aux
 *.log
-*.pyc
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
