@@ -1,0 +1,270 @@
+
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{hyperref}
+\usepackage{subcaption}
+\usepackage{microtype}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{siunitx}
+
+% avoid overfull boxes
+\setlength{\emergencystretch}{3em}
+
+% Disable math macros inside PDF bookmarks
+\pdfstringdefDisableCommands{%
+  \def\gap{lambda2}%
+  \def\hdeg{hdeg}%
+  \def\nL{L}%
+}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  citecolor=black,
+  urlcolor=blue
+}
+
+\title{A Sharp Hardness Transition in Tseitin Formulas Induced by Small Structural Perturbations}
+\author{Anonymous submission}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We study how small structural perturbations affect the difficulty of Tseitin formulas derived from Watts--Strogatz graphs. On 4-regular graphs with $n=80$ and rewiring probability $p \in \{0, 0.01, 0.02, 0.05\}$, we observe a sharp transition in CDCL performance: instances are easy at $p=0$, transitional near $p \approx 0.01$, and consistently reach the time limit for $p \geq 0.02$.
+
+The transition is strongly aligned with the spectral gap $\lambda_2$. By contrast, degree-based summaries such as $\hat d$ are also correlated in this dataset but are less directly interpretable as structural proxies for the observed regime change. To probe the solver side, we instrument Kissat and analyze runtime, conflicts, decisions, propagations, approximate mean LBD, propagations per conflict, and tracked learned-clause statistics. The key empirical pattern is not a collapse in search activity: conflicts remain abundant. Instead, the transition is accompanied by higher approximate LBD and lower propagations per conflict, suggesting that learned clauses become less effective at pruning the search space.
+
+Our contribution is empirical. We do not claim a causal proof linking spectral quantities to CDCL hardness, nor a general theory of proof complexity. Rather, we isolate a reproducible family in which small graph perturbations coincide with a sharp hardness transition and a measurable degradation in learned-clause quality.
+\end{abstract}
+
+\section{Introduction}
+
+Small structural changes can produce dramatic performance differences in SAT solving. Understanding such transitions is important both for practice and for theory: from the practical side, it can clarify which instance families induce solver failure modes; from the theoretical side, it may help connect graph structure, proof complexity, and the dynamics of clause learning.
+
+This paper reports a controlled empirical transition in the difficulty of Tseitin formulas generated from Watts--Strogatz graphs. We fix the graph size and degree, vary only the rewiring probability $p$, and measure both graph-side and solver-side quantities. The resulting behavior is striking: at $p=0$, the instances are solved quickly; around $p=0.01$, the runtime distribution broadens sharply; and for $p \geq 0.02$, all runs reach the time limit in our setup.
+
+The central question is not merely \emph{whether} the transition occurs, but \emph{what changes inside CDCL} when it does. A simplistic explanation would be that the solver becomes inactive or fails to generate enough conflicts. Our measurements do not support that view. Instead, the evidence points toward a regime in which conflicts remain frequent, but learned clauses appear less useful: approximate mean LBD increases, propagations per conflict decreases, and tracked clauses survive longer without producing proportionally stronger pruning.
+
+\paragraph{Contributions.}
+Our main contributions are the following.
+\begin{itemize}[leftmargin=1.5em]
+    \item We exhibit a sharp hardness transition in a controlled family of Watts--Strogatz Tseitin formulas.
+    \item We show that the transition is strongly aligned with the spectral gap $\lambda_2$.
+    \item We provide solver-internal evidence that the transition is better described as a degradation in learned-clause quality than as a reduction in search activity.
+    \item We provide a fully reproducible experimental pipeline and a compact set of diagnostics that can be reused for future SAT/CDCL studies on structurally perturbed instances.
+\end{itemize}
+
+\section{Background}
+
+\paragraph{Tseitin formulas.}
+Given a graph $G=(V,E)$ and an odd charge assignment on the vertices, the associated Tseitin formula is unsatisfiable and encodes parity constraints over edges. Tseitin formulas are a standard source of hard unsatisfiable SAT instances and are natural for studying the interaction between graph structure and proof search.
+
+\paragraph{Watts--Strogatz graphs.}
+The Watts--Strogatz model interpolates between regular ring lattices and more randomized small-world graphs through a rewiring probability $p$. In our setting, this provides a clean one-parameter family of bounded-degree graphs in which local regularity is gradually perturbed.
+
+\paragraph{CDCL diagnostics.}
+Modern CDCL solvers such as Kissat derive learned clauses from conflicts and rely on these clauses to propagate assignments and prune search. We use several diagnostics to probe that process: runtime, conflicts, decisions, propagations, approximate mean LBD, propagations per conflict, and tracked learned-clause statistics (usage, unused fraction, and lifetime). These measurements are intended as empirical indicators rather than exact proof-theoretic quantities.
+
+\section{Experimental Setup}
+
+\paragraph{Instances.}
+We generate 4-regular Watts--Strogatz graphs with $n=80$ for $p \in \{0, 0.01, 0.02, 0.05\}$. For each value of $p$, we evaluate 5 seeds, for a total of 20 instances.
+
+\paragraph{Solver and measurements.}
+All instances are solved with Kissat under a 60-second timeout. For each run we record runtime, conflicts, decisions, and propagations. We also compute graph-side quantities including the spectral gap $\lambda_2$ and $\hat d$. On the solver side, we extract approximate mean LBD and derived metrics such as propagations per conflict. Finally, we track a subset of learned clauses to estimate usage, unused fraction, and lifetime. Because these tracked-clause metrics are based on instrumentation rather than exhaustive logging, we interpret them as proxies.
+
+\paragraph{Reporting convention.}
+Timeouts are right-censored at 60 seconds and appear as runs with status \texttt{UNKNOWN} in the raw logs. 
+We therefore report medians and regime summaries in addition to scatter plots. Approximate mean LBD is explicitly labeled as approximate throughout.
+
+\paragraph{Implementation details.}
+All experiments were conducted on Ubuntu running under Windows Subsystem for Linux~2 (WSL~2) on a 64-bit Windows~11 system. 
+The machine is equipped with an AMD Ryzen~7~8845HS CPU (8 cores, 3.80\,GHz) and \SI{16}{\giga\byte} of RAM. 
+Hyperthreading was enabled, but all solver executions were performed sequentially on a single core to ensure consistency.
+
+We use Kissat~4.0.4 as our primary CDCL solver and MiniSat~2.2 as a baseline. 
+Both solvers are executed with default configurations, without any parameter tuning.
+
+Instance generation is fully deterministic, controlled by a fixed random seed. 
+Each $(n, d, p, \text{seed})$ tuple produces a uniquely identified CNF instance, ensuring reproducibility across runs.
+The CNF files are hashed to ensure instance identity across runs.
+
+\paragraph{Metric approximation.}
+We use an approximate LBD metric derived from solver output logs. This quantity should be interpreted as a proxy rather than an exact measurement, but is sufficient to capture relative trends across regimes.
+
+\section{Results}
+
+\subsection{Main transition}
+
+Figure~\ref{fig:transition} shows the basic phenomenon. Runtime increases by several orders of magnitude between $p=0$ and $p \geq 0.02$. The transition region is visible already at $p=0.01$, where some runs remain easy while others approach the timeout threshold. Conflicts also remain high across the hard regimes.
+
+\begin{figure}[t]
+\centering
+\begin{subfigure}[t]{0.48\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{../figures/runtime_vs_p_pub.png}
+    \caption{Runtime as a function of rewiring probability $p$. A sharp transition appears between $p=0.01$ and $p=0.02$. The dashed line marks the 60-second limit.}
+\end{subfigure}
+\hfill
+\begin{subfigure}[t]{0.48\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{../figures/conflicts_vs_p_pub.png}
+    \caption{Conflicts as a function of $p$. Conflict counts remain substantial in the hard regime, indicating that the solver is still actively exploring and learning.}
+\end{subfigure}
+\caption{Hardness transition under small structural perturbations. The key empirical point is that hard instances are not characterized by a disappearance of conflict activity.}
+\label{fig:transition}
+\end{figure}
+
+\paragraph{Key observation.}
+Across all regimes, conflict counts remain high while propagations per conflict decrease and approximate mean LBD increases. 
+This pattern suggests that the transition is not driven by reduced search activity, but by a degradation in the effectiveness of learned clauses.
+
+\subsection{Structural alignment}
+
+Figure~\ref{fig:structure} compares runtime with two graph-side summaries. Runtime is strongly aligned with $\lambda_2$ (Spearman $\rho = 0.845$), while $\hat d$ is also strongly correlated in this dataset (Spearman $\rho = -0.845$) but is less directly interpretable as the main structural signal. For this reason, we treat $\lambda_2$ as the more informative descriptor of the transition regime.
+
+\begin{figure}[t]
+\centering
+\begin{subfigure}[t]{0.48\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{../figures/runtime_vs_lambda2_pub.png}
+    \caption{Runtime as a function of spectral gap $\lambda_2$. The relationship is strongly monotone across the observed regime.}
+\end{subfigure}
+\hfill
+\begin{subfigure}[t]{0.48\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{../figures/runtime_vs_deg_hat_pub.png}
+    \caption{Runtime as a function of $\hat d$. This quantity is correlated here as well, but offers a less direct structural interpretation of the transition than $\lambda_2$.}
+\end{subfigure}
+\caption{Graph-side correlates of hardness. In this family, the spectral gap provides a compact descriptor of the transition regime.}
+\label{fig:structure}
+\end{figure}
+
+While $\hat{d}$ also exhibits correlation with runtime, it lacks a clear structural interpretation in this setting, unlike $\lambda_2$, which directly captures global connectivity properties of the underlying graph.
+
+\subsection{Solver-internal signatures}
+
+Figure~\ref{fig:mechanism} examines two solver-side metrics. Approximate mean LBD increases with $p$, while propagations per conflict decrease. This combination is consistent with a regime in which the solver still encounters many conflicts, but the resulting learned clauses are less effective at triggering further implications.
+
+\begin{figure}[t]
+\centering
+\begin{subfigure}[t]{0.48\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{../figures/lbd_mean_approx_vs_p_pub.png}
+    \caption{Approximate mean LBD as a function of $p$. Larger values suggest less compact and potentially less effective learned clauses.}
+\end{subfigure}
+\hfill
+\begin{subfigure}[t]{0.48\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{../figures/propagations_per_conflict_vs_p_pub.png}
+    \caption{Propagations per conflict as a function of $p$. The decline indicates weaker pruning per conflict in the hard regime.}
+\end{subfigure}
+\caption{Solver-internal metrics across regimes. The transition is accompanied by higher approximate LBD and lower pruning efficiency.}
+\label{fig:mechanism}
+\end{figure}
+
+Figure~\ref{fig:bridge} ties these measurements together. Runtime grows with approximate mean LBD (Spearman $\rho = 0.957$), while propagations per conflict decrease as $\lambda_2$ grows. Runtime and propagations per conflict are strongly negatively associated (Spearman $\rho = -0.879$). This does not establish causality, but it supports a coherent empirical picture in which structural perturbations are associated with lower-quality conflict information.
+
+\begin{figure}[t]
+\centering
+\begin{subfigure}[t]{0.48\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{../figures/runtime_vs_lbd_mean_approx_pub.png}
+    \caption{Runtime as a function of approximate mean LBD. Harder runs are associated with larger LBD values.}
+\end{subfigure}
+\hfill
+\begin{subfigure}[t]{0.48\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{../figures/propagations_per_conflict_vs_lambda2_pub.png}
+    \caption{Propagations per conflict as a function of $\lambda_2$. As the spectral gap increases, the pruning power extracted per conflict tends to decrease.}
+\end{subfigure}
+\caption{Bridging structural and solver-side measurements. The transition is consistent with a shift toward less informative learned clauses.}
+\label{fig:bridge}
+\end{figure}
+
+\subsection{Tracked clause diagnostics}
+
+Tracked-clause metrics provide a useful secondary view. Clause usage remains comparatively stable across regimes, while average tracked-clause lifetime increases markedly. This pattern is compatible with a setting in which learned clauses are retained and touched, yet contribute less efficient pruning overall. We treat this evidence as suggestive rather than definitive because it is based on tracked clauses rather than the full learned database.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{cccccccc}
+\toprule
+$p$ & runtime med. & $\lambda_2$ med. & $\hat d$ med. & conflicts med. & approx. LBD & prop./conf. & timeout frac. \\
+\midrule
+0.00 & 0.028 & 0.008 & 912.730 & 10980 & 3.394 & 8.532 & 0.00 \\
+0.01 & 52.630 & 0.047 & 372.537 & 16236767 & 8.167 & 4.011 & 0.50 \\
+0.02 & 60.006 & 0.089 & 270.785 & 18760011 & 12.857 & 2.790 & 1.00 \\
+0.05 & 60.006 & 0.167 & 199.557 & 18483774 & 18.774 & 2.901 & 1.00 \\
+\bottomrule
+\end{tabular}
+\caption{Regime summary by rewiring probability $p$. Runtime is in seconds. Approximate LBD and propagations per conflict are reported as means over runs in each regime.}
+\label{tab:summary}
+\end{table}
+
+Table~\ref{tab:summary} summarizes the regime transition. The median runtime jumps from 0.028 seconds at $p=0$ to 52.630 seconds at $p=0.01$, then saturates at the timeout threshold for $p \geq 0.02$. Over the same range, the mean approximate LBD rises and the mean propagations per conflict falls sharply.
+
+\paragraph{Key observation.}
+We observe a strong monotonic relationship between runtime and $\lambda_2$, consistent across all seeds.
+Across all regimes, conflict counts remain high while propagations per conflict decrease and LBD increases. 
+This indicates that the transition is not driven by reduced search activity, but by a degradation in the effectiveness of learned clauses.
+
+\section{Discussion}
+
+We emphasize that our results establish correlation rather than causation. While the spectral gap $\lambda_2$ is strongly associated with solver difficulty, we do not claim a direct causal mechanism.
+
+The main empirical conclusion is modest but robust: in this family, hardness does not look like a simple lack of CDCL activity. The solver continues to generate conflicts in abundance. 
+What changes is the apparent utility of those conflicts. Learned clauses become broader in the approximate LBD sense, and each conflict yields fewer propagations on average.
+
+This interpretation is compatible with a proof-complexity reading in which the relevant information becomes harder to compress into short, reusable learned clauses. 
+However, our data do not prove that explanation. We therefore present it only as a plausible lens for understanding the observed transition.
+
+The graph-side picture is also deliberately cautious. The strong alignment with $\lambda_2$ makes the spectral gap a useful empirical descriptor of the transition. 
+But we do not claim that $\lambda_2$ alone causes the observed runtime behavior, nor that it should universally dominate other structural measures on other instance families.
+
+\paragraph{Limitations.}
+Our experiments cover one graph size, one degree regime, one generator family, and one primary solver instrumentation pipeline. The sample size is intentionally controlled rather than large-scale. Timeouts induce right-censoring in the hardest regimes. Approximate mean LBD and tracked-clause metrics are proxies. These limits do not invalidate the transition, but they constrain the scope of the claims.
+
+\section{Related Work}
+
+Tseitin formulas have long served as a bridge between graph structure and proof complexity, especially in the study of hard unsatisfiable instances. The SAT literature has also repeatedly shown that solver performance depends not only on coarse syntactic features but on structural properties that shape propagation and learning dynamics. More recently, solver instrumentation has made it increasingly feasible to connect instance families with internal CDCL behavior rather than relying on runtime alone.
+
+Our work is closest in spirit to empirical SAT studies that seek mechanistic explanations for hardness through solver-side diagnostics. The present paper does not propose a new lower bound or a new theory of proof complexity. Instead, it contributes a clean experimental family in which a sharp transition can be observed and interrogated using both graph-side and solver-side measurements.
+
+\section{Conclusion}
+
+While our experiments focus on a specific regime (fixed $n$, degree, and graph model), the methodology extends naturally to other graph families and parameter ranges.
+
+We identified a sharp hardness transition in Tseitin formulas generated from Watts--Strogatz graphs under small structural perturbations. 
+The transition is strongly aligned with the spectral gap and is accompanied by a clear solver-internal signature: conflict activity remains high, but learned-clause quality appears to degrade, as reflected by higher approximate mean LBD and lower propagations per conflict.
+
+The safest interpretation is therefore not that CDCL ``stops learning,'' but that it learns clauses with weaker pruning power in the high-$p$ regime. This empirical picture is precise enough to be useful and modest enough to support. 
+It also suggests several natural next steps: denser sampling around the transition, comparison across solvers, larger graph sizes, and richer internal clause-quality instrumentation.
+
+\appendix
+\section{Additional tracked-clause plots}
+
+\begin{figure}[t]
+\centering
+\begin{subfigure}[t]{0.48\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{../figures/tracked_clause_avg_usage_vs_p_pub.png}
+    \caption{Tracked clause average usage as a function of $p$. Usage does not collapse in the hard regime.}
+\end{subfigure}
+\hfill
+\begin{subfigure}[t]{0.48\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{../figures/tracked_clause_avg_lifetime_conflicts_vs_p_pub.png}
+    \caption{Average tracked clause lifetime, measured in conflicts, as a function of $p$. Lifetimes grow substantially in the hard regime.}
+\end{subfigure}
+\caption{Secondary tracked-clause diagnostics. These plots are consistent with the view that clause databases remain active, while per-clause pruning efficiency deteriorates.}
+\end{figure}
+
+\end{document}
