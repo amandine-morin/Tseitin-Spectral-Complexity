@@ -68,9 +68,6 @@ The frozen archive SHA-256 is:
 The implementation material below documents the broader experimental pipeline.
 It is not required for analysis-only reproduction of the published results.
 
-Status: Archived v1 (Python-based exploratory pipeline).
-See branch cpp-experiment for the current experimental pipeline using Kissat.
-
 ---
 
 ## 🧾 Experimental Disclaimer
