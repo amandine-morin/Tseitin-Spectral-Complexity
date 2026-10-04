@@ -1,0 +1,89 @@
+{
+  "adjusted_efficiency_ci95": [
+    -2.4460004,
+    -0.68802001
+  ],
+  "adjusted_efficiency_coefficient": -1.5245588,
+  "confirmation_rows": 200,
+  "cv_log_score_gain": 0.022649931854999993,
+  "discovery_rows": 300,
+  "expected_output_comparisons": [
+    {
+      "byte_identical": true,
+      "path": "experiments/degree_preserving_ring_transition_dense_n80_d4/summary.csv"
+    },
+    {
+      "byte_identical": true,
+      "path": "experiments/degree_preserving_ring_transition_dense_n80_d4_replication_s20_s24_n100/confirmatory_results.csv"
+    },
+    {
+      "byte_identical": true,
+      "path": "experiments/exploratory_aft_efficiency_modularity_20261003/cv_scores.csv"
+    },
+    {
+      "byte_identical": true,
+      "path": "experiments/exploratory_aft_efficiency_modularity_20261003/model_coefficients.csv"
+    },
+    {
+      "byte_identical": true,
+      "path": "experiments/exploratory_aft_efficiency_modularity_20261003/model_summary.csv"
+    },
+    {
+      "byte_identical": true,
+      "path": "experiments/exploratory_aft_efficiency_modularity_20261003/replication_scores.csv"
+    },
+    {
+      "byte_identical": true,
+      "path": "experiments/exploratory_aft_score_uncertainty_20261003/bootstrap_summary.csv"
+    },
+    {
+      "byte_identical": true,
+      "path": "experiments/exploratory_effective_dose_robustness_20261004/cv_predictions.csv"
+    },
+    {
+      "byte_identical": true,
+      "path": "experiments/exploratory_effective_dose_robustness_20261004/effective_dose_data.csv"
+    },
+    {
+      "byte_identical": true,
+      "path": "experiments/exploratory_effective_dose_robustness_20261004/model_results.csv"
+    },
+    {
+      "byte_identical": true,
+      "path": "experiments/kissat_combined_presentation_robustness_s20_s24_n60/cv_predictions.csv"
+    },
+    {
+      "byte_identical": true,
+      "path": "experiments/kissat_combined_presentation_robustness_s20_s24_n60/graph_descriptives.csv"
+    },
+    {
+      "byte_identical": true,
+      "path": "experiments/kissat_combined_presentation_robustness_s20_s24_n60/model_results.csv"
+    },
+    {
+      "byte_identical": true,
+      "path": "experiments/kissat_combined_presentation_robustness_s20_s24_n60/quadratic_bootstrap_failures.csv"
+    }
+  ],
+  "expected_output_mismatches": [],
+  "paper_figure_pdfs": [
+    "report/figures_20261003/normalized_structure_and_timeout.pdf",
+    "report/figures_20261003/resolved_runtime_vs_requested_swaps.pdf",
+    "report/figures_20261003/solver_diagnostics_vs_requested_swaps.pdf",
+    "report/figures_20261003/timeout_fraction_vs_requested_swaps.pdf",
+    "report/figures_20261003/tracked_clause_diagnostics_vs_requested_swaps.pdf"
+  ],
+  "pilot_rows": 80,
+  "prespecified_verdict": "ROBUSTNESS NOT ESTABLISHED (\"robustesse non \u00e9tablie\")",
+  "robustness_graph_categories": {
+    "five_of_five": 23,
+    "mixed_one_to_four_of_five": 24,
+    "zero_of_five": 13
+  },
+  "robustness_graphs": 60,
+  "robustness_runs": 300,
+  "robustness_statuses": {
+    "UNKNOWN": 120,
+    "UNSAT": 180
+  }
+}

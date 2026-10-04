@@ -1,0 +1,11 @@
+mode,seed,exit,cnf_hash,runtime_ms,status
+circulant,0,20,4ade8e81df46312f,11,UNSAT
+circulant,1,20,b862c91c50cf84c3,12,UNSAT
+circulant,2,20,98e68d6885dc9116,15,UNSAT
+circulant,3,20,4edbac02743f38db,13,UNSAT
+circulant,4,20,f1d06ada6bdd0ebf,9,UNSAT
+config_model,0,124,e3f0ba1e8d64597e,60005,UNKNOWN
+config_model,1,124,74a2e777d287d45a,60006,UNKNOWN
+config_model,2,124,f1bc497ed44c3ef4,60007,UNKNOWN
+config_model,3,124,88221a4dfb5920,60007,UNKNOWN
+config_model,4,124,c263f6f6c7b813ce,60008,UNKNOWN

@@ -1,0 +1,391 @@
+#include "graph.hpp"
+#include "kissat_runner.hpp"
+#include "tseitin_cnf.hpp"
+
+#include <algorithm>
+#include <chrono>
+#include <cstdint>
+#include <filesystem>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <numeric>
+#include <random>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+
+namespace {
+
+std::vector<bool> buildRandomCharges(int vertices, std::mt19937& rng) {
+    std::vector<bool> charges(vertices, false);
+    std::bernoulli_distribution dist(0.5);
+
+    for (int i = 0; i < vertices; ++i) {
+        charges[i] = dist(rng);
+    }
+
+    int sum = std::accumulate(charges.begin(), charges.end(), 0);
+    if (sum % 2 == 0 && vertices > 0) {
+        charges[0] = !charges[0];
+    }
+
+    return charges;
+}
+
+uint64_t fnv1aHashFile(const std::filesystem::path& path) {
+    constexpr uint64_t kOffsetBasis = 14695981039346656037ULL;
+    constexpr uint64_t kPrime = 1099511628211ULL;
+    std::ifstream file(path, std::ios::binary);
+    if (!file.is_open()) {
+        throw std::runtime_error("Failed to open file for hashing: " + path.string());
+    }
+    uint64_t hash = kOffsetBasis;
+    char buffer[4096];
+    while (file.read(buffer, sizeof(buffer)) || file.gcount() > 0) {
+        std::streamsize count = file.gcount();
+        for (std::streamsize i = 0; i < count; ++i) {
+            hash ^= static_cast<unsigned char>(buffer[i]);
+            hash *= kPrime;
+        }
+    }
+    return hash;
+}
+
+std::string hashToHex(uint64_t hash) {
+    std::ostringstream stream;
+    stream << std::hex << hash;
+    return stream.str();
+}
+
+std::string trim(const std::string& text) {
+    const std::string whitespace = " \t\r\n";
+    const auto start = text.find_first_not_of(whitespace);
+    if (start == std::string::npos) {
+        return "";
+    }
+    const auto end = text.find_last_not_of(whitespace);
+    return text.substr(start, end - start + 1);
+}
+
+struct SolverConfig {
+    SatSolver solver = SatSolver::Kissat;
+    int timeout_seconds = 60;
+    std::string kissat_path = "kissat";
+    std::string minisat_path = "minisat";
+};
+
+SolverConfig loadSolverConfig(const std::filesystem::path& config_path,
+                              bool required) {
+    SolverConfig config;
+
+    std::ifstream in(config_path);
+    if (!in.is_open()) {
+        if (required) {
+            throw std::runtime_error("Failed to open solver config file: " + config_path.string());
+        }
+        return config;
+    }
+
+    std::string line;
+    int line_number = 0;
+    while (std::getline(in, line)) {
+        ++line_number;
+        std::string content = trim(line);
+        if (content.empty() || content[0] == '#') {
+            continue;
+        }
+
+        const std::size_t eq = content.find('=');
+        if (eq == std::string::npos) {
+            throw std::runtime_error("Invalid config line " + std::to_string(line_number) +
+                                     " in " + config_path.string() +
+                                     ": expected key=value");
+        }
+
+        const std::string key = trim(content.substr(0, eq));
+        const std::string value = trim(content.substr(eq + 1));
+
+        if (key == "solver") {
+            config.solver = KissatRunner::solverFromString(value);
+        } else if (key == "timeout_seconds") {
+            config.timeout_seconds = std::stoi(value);
+            if (config.timeout_seconds <= 0) {
+                throw std::runtime_error("timeout_seconds must be > 0");
+            }
+        } else if (key == "kissat_path") {
+            config.kissat_path = value;
+        } else if (key == "minisat_path") {
+            config.minisat_path = value;
+        } else {
+            throw std::runtime_error("Unknown config key '" + key + "' in " + config_path.string());
+        }
+    }
+
+    return config;
+}
+
+struct RunOptions {
+    int vertices = -1;
+    int degree = -1;
+    uint32_t seed = 0;
+    double p = 0.0;
+    std::filesystem::path out_dir = "out";
+    std::filesystem::path config_path = "code/cpp/solver_config.ini";
+    bool config_overridden = false;
+    SatSolver solver = SatSolver::Kissat;
+    bool solver_overridden = false;
+    std::string solver_path_override;
+    int timeout_seconds = -1;
+    bool timeout_overridden = false;
+    Graph::Mode graph_mode = Graph::Mode::Circulant;
+};
+
+std::string graphModeToString(Graph::Mode mode) {
+    switch (mode) {
+        case Graph::Mode::Circulant:
+            return "circulant";
+        case Graph::Mode::ConfigModel:
+            return "config_model";
+        case Graph::Mode::WattsStrogatz:
+            return "watts_strogatz";
+        default:
+            return "unknown";
+    }
+}
+
+std::string formatProbabilityForName(double p) {
+    std::ostringstream stream;
+    stream << std::fixed << std::setprecision(6) << p;
+    std::string text = stream.str();
+    for (char& ch : text) {
+        if (ch == '.') {
+            ch = 'p';
+        }
+    }
+    return text;
+}
+
+uint64_t hashEdgesCanonical(const Graph& graph) {
+    constexpr uint64_t kOffsetBasis = 14695981039346656037ULL;
+    constexpr uint64_t kPrime = 1099511628211ULL;
+    std::vector<Graph::Edge> edges = graph.edges();
+    std::sort(edges.begin(), edges.end());
+    uint64_t hash = kOffsetBasis;
+    for (const auto& edge : edges) {
+        uint64_t packed =
+            (static_cast<uint64_t>(edge.first) << 32) |
+            static_cast<uint64_t>(edge.second);
+        for (int shift = 0; shift < 64; shift += 8) {
+            hash ^= static_cast<unsigned char>((packed >> shift) & 0xFF);
+            hash *= kPrime;
+        }
+    }
+    return hash;
+}
+
+RunOptions parseArgs(int argc, char** argv) {
+    RunOptions options;
+    bool seed_provided = false;
+    bool p_provided = false;
+
+    for (int i = 1; i < argc; ++i) {
+        std::string arg = argv[i];
+        if (arg == "--n") {
+            if (i + 1 >= argc) {
+                throw std::invalid_argument("Missing value for --n");
+            }
+            options.vertices = std::stoi(argv[++i]);
+        } else if (arg == "--d") {
+            if (i + 1 >= argc) {
+                throw std::invalid_argument("Missing value for --d");
+            }
+            options.degree = std::stoi(argv[++i]);
+        } else if (arg == "--seed") {
+            if (i + 1 >= argc) {
+                throw std::invalid_argument("Missing value for --seed");
+            }
+            options.seed = static_cast<uint32_t>(std::stoul(argv[++i]));
+            seed_provided = true;
+        } else if (arg == "--p") {
+            if (i + 1 >= argc) {
+                throw std::invalid_argument("Missing value for --p");
+            }
+            options.p = std::stod(argv[++i]);
+            p_provided = true;
+        } else if (arg == "--outdir") {
+            if (i + 1 >= argc) {
+                throw std::invalid_argument("Missing value for --outdir");
+            }
+            options.out_dir = argv[++i];
+        } else if (arg == "--config") {
+            if (i + 1 >= argc) {
+                throw std::invalid_argument("Missing value for --config");
+            }
+            options.config_path = argv[++i];
+            options.config_overridden = true;
+        } else if (arg == "--solver") {
+            if (i + 1 >= argc) {
+                throw std::invalid_argument("Missing value for --solver");
+            }
+            options.solver = KissatRunner::solverFromString(argv[++i]);
+            options.solver_overridden = true;
+        } else if (arg == "--solver-path") {
+            if (i + 1 >= argc) {
+                throw std::invalid_argument("Missing value for --solver-path");
+            }
+            options.solver_path_override = argv[++i];
+        } else if (arg == "--timeout") {
+            if (i + 1 >= argc) {
+                throw std::invalid_argument("Missing value for --timeout");
+            }
+            options.timeout_seconds = std::stoi(argv[++i]);
+            if (options.timeout_seconds <= 0) {
+                throw std::invalid_argument("--timeout must be > 0");
+            }
+            options.timeout_overridden = true;
+        } else if (arg == "--kissat") {
+            if (i + 1 >= argc) {
+                throw std::invalid_argument("Missing value for --kissat");
+            }
+            options.solver = SatSolver::Kissat;
+            options.solver_overridden = true;
+            options.solver_path_override = argv[++i];
+        } else if (arg == "--graph_mode") {
+            if (i + 1 >= argc) {
+                throw std::invalid_argument("Missing value for --graph_mode");
+            }
+            std::string mode = argv[++i];
+            if (mode == "circulant") {
+                options.graph_mode = Graph::Mode::Circulant;
+            } else if (mode == "config_model") {
+                options.graph_mode = Graph::Mode::ConfigModel;
+            } else if (mode == "watts_strogatz") {
+                options.graph_mode = Graph::Mode::WattsStrogatz;
+            } else {
+                throw std::invalid_argument("Unknown graph mode: " + mode);
+            }
+        } else {
+            throw std::invalid_argument("Unknown argument: " + arg);
+        }
+    }
+
+    if (options.vertices <= 0 || options.degree < 0) {
+        throw std::invalid_argument(
+            "Usage: run_kissat --n <N> --d <D> [--seed <S>] [--outdir <PATH>]"
+            " [--config <PATH>] [--solver <kissat|minisat>] [--solver-path <PATH>]"
+            " [--timeout <SECONDS>] [--kissat <PATH>]"
+            " [--graph_mode <circulant|config_model|watts_strogatz>] [--p <PROB>]");
+    }
+
+    if (!seed_provided) {
+        options.seed = 0;
+    }
+
+    if (options.graph_mode == Graph::Mode::WattsStrogatz) {
+        if (!p_provided) {
+            throw std::invalid_argument("Missing --p for watts_strogatz graph mode");
+        }
+        if (options.p < 0.0 || options.p > 1.0) {
+            throw std::invalid_argument("--p must be in [0, 1]");
+        }
+    } else if (p_provided) {
+        throw std::invalid_argument("--p is only valid with --graph_mode watts_strogatz");
+    }
+
+    return options;
+}
+
+}  // namespace
+
+int main(int argc, char** argv) {
+    RunOptions options;
+    try {
+        options = parseArgs(argc, argv);
+    } catch (const std::exception& e) {
+        std::cerr << "Argument error: " << e.what() << '\n';
+        return 1;
+    }
+
+    SolverConfig config;
+    try {
+        config = loadSolverConfig(options.config_path, options.config_overridden);
+    } catch (const std::exception& e) {
+        std::cerr << "Config error: " << e.what() << '\n';
+        return 1;
+    }
+
+    const SatSolver active_solver = options.solver_overridden ? options.solver : config.solver;
+    const int active_timeout = options.timeout_overridden ? options.timeout_seconds : config.timeout_seconds;
+
+    std::string active_path = options.solver_path_override;
+    if (active_path.empty()) {
+        active_path = (active_solver == SatSolver::Kissat) ? config.kissat_path : config.minisat_path;
+    }
+
+    std::mt19937 rng(options.seed);
+    Graph graph(options.vertices, options.degree, rng, options.graph_mode, options.p);
+    if (options.graph_mode == Graph::Mode::WattsStrogatz) {
+        std::mt19937 check_rng(options.seed);
+        Graph check_graph(options.vertices, options.degree, check_rng, options.graph_mode, options.p);
+        if (hashEdgesCanonical(check_graph) != hashEdgesCanonical(graph)) {
+            throw std::runtime_error("Determinism check failed for Watts-Strogatz graph generation");
+        }
+
+        std::mt19937 ws_zero_rng(options.seed);
+        Graph ws_zero(options.vertices, options.degree, ws_zero_rng, Graph::Mode::WattsStrogatz, 0.0);
+        std::mt19937 circ_rng(options.seed);
+        Graph circ(options.vertices, options.degree, circ_rng, Graph::Mode::Circulant);
+        if (hashEdgesCanonical(ws_zero) != hashEdgesCanonical(circ)) {
+            throw std::runtime_error("Watts-Strogatz p=0 graph does not match circulant mode");
+        }
+    }
+    auto charges = buildRandomCharges(options.vertices, rng);
+
+    TseitinCnfBuilder builder;
+    auto formula = builder.build(graph, charges);
+
+    std::string base_name = "run_kissat_n" + std::to_string(options.vertices) +
+        "_d" + std::to_string(options.degree) +
+        "_s" + std::to_string(options.seed) +
+        "_m" + graphModeToString(options.graph_mode);
+    if (options.graph_mode == Graph::Mode::WattsStrogatz) {
+        base_name += "_p" + formatProbabilityForName(options.p);
+    }
+    std::filesystem::path cnf_path = options.out_dir / (base_name + ".cnf");
+    std::filesystem::path solver_output = options.out_dir / (base_name + ".out");
+    std::filesystem::create_directories(options.out_dir);
+    TseitinCnfBuilder::writeDimacs(formula, cnf_path.string());
+    std::string cnf_hash_hex = hashToHex(fnv1aHashFile(cnf_path));
+
+    KissatRunner runner(active_solver, active_path, active_timeout);
+    auto t0 = std::chrono::steady_clock::now();
+    KissatResult result = runner.run(cnf_path.string(), solver_output.string());
+    auto t1 = std::chrono::steady_clock::now();
+
+    long long runtime_ms =
+        std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count();
+
+    if (result.runtime_ms > 0) {
+        runtime_ms = result.runtime_ms;
+    }
+
+    std::cout << "solver: " << KissatRunner::solverToString(active_solver) << "\n";
+    std::cout << "solver_path: " << (active_path.empty() ? "PATH" : active_path) << "\n";
+    std::cout << "timeout_seconds: " << active_timeout << "\n";
+    std::cout << "cnf_hash: " << cnf_hash_hex << "\n";
+    std::cout << "runtime_ms: " << runtime_ms << "\n";
+
+    std::string solve_status = result.status_string;
+    if (solve_status == "OK") {
+        solve_status = result.timed_out ? "UNKNOWN"
+            : (result.exit_code == 10 ? "SAT"
+            : (result.exit_code == 20 ? "UNSAT" : "OK"));
+    }
+    std::cout << "solve_status: " << solve_status << "\n";
+
+    if (result.timed_out) {
+        return 124;
+    }
+    return result.exit_code;
+}

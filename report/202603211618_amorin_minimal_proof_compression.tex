@@ -18,6 +18,7 @@
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.17} % arXiv-safe (slightly older than 1.18)
 \usetikzlibrary{positioning,arrows.meta,shapes,calc}
+\usepackage{graphicx}
 
 % avoid overfull boxes
 \setlength{\emergencystretch}{3em}
@@ -25,7 +26,7 @@
 % Disable math macros inside PDF bookmarks
 \pdfstringdefDisableCommands{%
   \def\gap{lambda2}%
-  \def\hdeg{deg}%
+  \def\hdeg{hdeg}%
   \def\nL{L}%
 }
 
@@ -51,7 +52,7 @@ A Physics-Motivated Exploration}\\
 \footnote{Research conducted independently.}%
 \footnote{No institutional affiliation.}}
 
-\date{November 27, 2025}
+\date{Revised February 2026}
 
 \begin{document}
 \maketitle
@@ -77,33 +78,35 @@ We introduce the predictor
 \hdeg(G) := \frac{n}{\sqrt{1/d + 1/\gap}},
 \]
 where $n$ is the number of vertices, $d$ the average degree, and $\gap$ the second-smallest
-eigenvalue of the normalized Laplacian~\cite{Chung1997}.  
+eigenvalue of the normalized Laplacian~\cite{Chung1997}.
 We formulate corresponding Kolmogorov-type information conjectures~\cite{LiVitanyi},
-conjectural decision-tree lower bounds reflecting expansion~\cite{HooryLinialWigderson},
-and a link to Polynomial Calculus degree~\cite{Razborov1998}.  
-Empirical data (embedded PGFPlots) demonstrates a qualitative correlation between $\hdeg(G)$ and
-practical SAT-solving time on Tseitin formulas.
+conjectural decision-tree lower bounds, and connections to Polynomial Calculus degree.
+
+Empirically, we observe that small structural perturbations can induce sharp,
+solver-dependent transitions in SAT solver behavior at fixed $(n,d)$,
+notably under Watts--Strogatz rewiring.
+We interpret these transitions as evidence for underlying \emph{information thresholds}
+governing solver difficulty.
 
 \medskip
 \noindent\textbf{Note.} This is an exploratory preprint presenting conjectures and
-preliminary empirical validation. No new theorems are proved. We explicitly invite
-the community to test, refine, or refute these hypotheses.
+preliminary empirical observations. No new theorems are proved.
 \end{abstract}
 
 \paragraph{Contributions.}
 This exploratory work offers:
 \begin{itemize}
-  \item A physics-motivated \emph{conjectural} framework (MPCC) linking spectral structure
+  \item A physics-motivated \emph{conjectural} framework linking spectral structure
         to proof complexity for Tseitin formulas;
-  \item A simple predictor $\hdeg(G)$ calibrated on canonical graph families
-        (cycles, grids, expanders, completes);
-  \item Preliminary empirical evidence that $\hdeg(G)$ correlates with CDCL solving time
-        on small Tseitin instances;
-  \item A roadmap of conjectures connecting decision-tree complexity, Polynomial Calculus,
-        and time-bounded Kolmogorov complexity.
+  \item A structural predictor $\hdeg(G)$ combining local density and global connectivity;
+  \item Empirical evidence of a \emph{structural phase transition} in SAT solver behavior
+        under small graph perturbations at fixed $(n,d)$;
+  \item A preliminary connection between these transitions and information-theoretic
+        interpretations of solver complexity;
+  \item A roadmap of conjectures linking spectral graph theory, decision-tree complexity,
+        Polynomial Calculus, and Kolmogorov complexity.
 \end{itemize}
-\textbf{No new theorems are proved.} All formal lower-bound statements are explicitly
-presented as conjectures.
+\textbf{No new theorems are proved.}
 
 % ============================
 \section{Introduction}
@@ -137,6 +140,31 @@ Our goal here is not to present a complete lower-bound proof, but to propose a c
 structural scale that can be probed both analytically and empirically, and which appears
 to interpolate naturally between known behaviors on cycles, grids, expanders and dense graphs.
 
+Even when the degree is fixed, the global geometry of the constraint graph can vary
+significantly depending on the generation model, as illustrated in
+Figure~\ref{fig:graph_models_contrast}.
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=0.48\linewidth]{../figures/circulant_n80_d4_s0.png}\hfill
+  \includegraphics[width=0.48\linewidth]{../figures/config_n80_d4_s3.png}
+  \caption{
+  Degree-regular graphs with identical parameters ($n=80$, $d=4$) generated using two
+  different models.
+  \textbf{Left:} circulant graph (highly symmetric, homogeneous geometry).
+  \textbf{Right:} configuration-model graph (irregular geometry with local bottlenecks).
+  Despite identical degree sequences, the resulting structures differ substantially at the geometric level.
+  }
+  \label{fig:graph_models_contrast}
+\end{figure}
+\FloatBarrier
+
+While the spectral predictor $\hdeg(G)$ provides a guiding theoretical hypothesis,
+our experimental results primarily highlight strong structural sensitivity phenomena.
+In particular, we observe that very small perturbations in graph structure can induce
+abrupt transitions in solver behavior, suggesting the existence of underlying
+information thresholds.
+
 % ============================
 \section{Graphs, spectrum, and conventions}
 
@@ -152,7 +180,7 @@ with eigenvalues
 where $\gap$ is the second-smallest eigenvalue (the spectral gap)~\cite{Chung1997}.
 
 \begin{remark}[Cheeger inequality]
-Let $\phi(G)$ denote edge conductance.  
+Let $\phi(G)$ denote edge conductance.
 Cheeger-type inequalities for the normalized Laplacian~\cite{Chung1997} give
 \[
 \frac{\phi(G)^2}{2} \le \gap \le 2\phi(G),
@@ -275,101 +303,163 @@ Complete $K_n$  & $n$   & 1               & $\Theta(n)$       & dense          \
 \end{center}
 
 % ============================
-\section{Empirical sanity checks}
+\section{Empirical Results}
 
 We test the alignment between $\hdeg(G)$ and practical SAT difficulty for Tseitin CNFs.
 Families include cycles $C_n$, grids, complete bipartite graphs, and random regular graphs.
 CNFs are generated by constructing $G$ and encoding XOR constraints at each vertex into
 3-CNF using auxiliary variables.
 
-\subsection*{Experimental setup and reproducibility}
+We present controlled experiments investigating the impact of graph structure
+on solver behavior, as well as preliminary evidence relating this behavior
+to the spectral predictor $\hdeg(G)$.
 
-The experiments are illustrative rather than benchmark-oriented.
-A Python script generates the graph, encodes Tseitin constraints, and invokes a
-MiniSat binary with default settings. Wall-clock times are measured with a
-high-resolution timer and reported in seconds; very small instances naturally round
-to \texttt{0.0000} at the displayed precision.
+% ============================
+\subsection{Experimental pipeline and structure dependence}
 
-A fully reproducible setup would fix and document:
+We use a reproducible C++ pipeline in which each instance is fully determined by
+$(n,d,\texttt{seed},\texttt{graph\_mode},p)$.
+The pipeline generates the graph, builds the corresponding Tseitin CNF,
+computes a byte-level hash of the DIMACS file (\texttt{cnf\_hash}),
+and runs a SAT solver under fixed resource limits.
+
+We evaluate two CDCL solvers:
 \begin{itemize}
-  \item the exact MiniSat version and compilation flags;
-  \item the seeds used to generate random regular graphs;
-  \item the hardware and OS environment.
+  \item \textbf{Kissat} (modern high-performance solver),
+  \item \textbf{MiniSat} (baseline reference solver).
 \end{itemize}
-A future version of this work is intended to provide the scripts and raw data in
-a public repository.
 
-\subsection*{Dataset table}
+All runs use a \SI{60}{\second} wall-clock timeout.
+Each configuration is evaluated over 5 independent seeds.
 
-\begin{table}[h]
-\centering\small
-\caption{Tseitin CNFs: measures and predictor $\hdeg(G)$.}
-\begin{tabular}{lrrrrr}
-\toprule
-Family         & $n$ & clauses & width & $\hdeg(G)$ & time\_s \\
+At fixed size $n=80$ and degree $d=4$, we observe strong structure dependence
+even when $(n,d)$ are held constant.
+In particular, graph generation models with identical degree sequences can yield
+dramatically different solver behavior.
 
-\midrule
-cycle          &  8  &   40    & 3     & 4.044      & 0.0000 \\
-cycle          & 16  &   80    & 3     & 4.333      & 0.0000 \\
-cycle          & 32  &  160    & 3     & 4.415      & 0.0000 \\
-cycle          & 64  &  320    & 3     & 4.455      & 0.0000 \\
-\midrule
-grid 2$\times$4&  8  &   20    & 3     & 3.958      & 0.0000 \\
-grid 4$\times$4& 16  &  144    & 3     & 7.217      & 0.0020 \\
-grid 4$\times$8& 32  &  245    & 3     & 7.113      & 0.0020 \\
-grid 8$\times$8& 64  &  704    & 3     & 13.682     & 9.2530 \\
-\midrule
-$K_{4,4}$      &  8  &  104    & 3     & 7.155      & 0.0000 \\
-$K_{8,8}$      & 16  &  464    & 3     & 15.085     & 19.0370 \\
-\midrule
-\multicolumn{6}{c}{\textit{Random Regular Graphs (6-reg)}} \\
-\midrule
-Cycle (50)     & 50  &  250    & 3     & 50.395     & 0.0001 \\
-3-reg (50)     & 50  &  375    & 3     & 60.123     & 0.0002 \\
-6-reg (50)     & 50  &  750    & 3     & 80.522     & 0.0004 \\
-6-reg (80)     & 80  & 1200    & 3     & 126.084    & 0.0014 \\
-\bottomrule
-\end{tabular}
-\end{table}
+% ============================
+\subsection{Watts--Strogatz transition}
 
-\subsection*{Spectral predictor vs solver time}
+We study $d$-regular graphs generated using the Watts--Strogatz rewiring model,
+with rewiring probability
+\[
+p \in \{0, 0.01, 0.02, 0.05\}.
+\]
+
+All instances correspond to Tseitin contradictions and are UNSAT by construction.
+
+\paragraph{Observed transition.}
+
+We observe a sharp transition in solver behavior, which we refer to as a
+\emph{structural phase transition}.
+
+For Kissat:
+\begin{itemize}
+  \item $p=0$: easy regime (median \SI{22}{\milli\second})
+  \item $p=0.01$: heavy-tailed regime (median \SI{6305}{\milli\second})
+  \item $p \ge 0.02$: all runs timeout
+\end{itemize}
+
+For MiniSat:
+\begin{itemize}
+  \item $p=0$: easy regime (median \SI{48}{\milli\second})
+  \item $p \ge 0.01$: all runs timeout
+\end{itemize}
+
+The abruptness of the transition, occurring between $p=0.01$ and $p=0.02$,
+suggests a threshold phenomenon rather than a smooth degradation.
+
+\paragraph{Interpretation.}
+
+These results indicate that small structural perturbations can dramatically alter
+the effective search landscape of CDCL solvers.
+
+The shift in transition threshold between MiniSat and Kissat suggests that
+this phenomenon depends not only on instance structure, but also on the interaction
+between graph geometry and solver heuristics.
+
+In particular, the heavy-tailed regime observed for Kissat at $p=0.01$
+suggests the presence of an intermediate phase in which instances remain solvable,
+but require highly variable amounts of computational effort.
+
+\paragraph{Relation to the spectral predictor.}
+
+Although $n$ and $d$ are fixed, rewiring significantly alters the global structure
+of the graph, likely affecting expansion and the spectral gap $\gap$.
+
+While these results are consistent with the hypothesis that $\hdeg(G)$ captures
+structural hardness, we do not yet compute $\gap$ for these instances.
+Establishing a direct quantitative link between $\hdeg(G)$ and the observed transition
+remains an important direction for future work.
+
+% ============================
+\subsection{Runtime distributions}
 
 \begin{figure}[h]
 \centering
-\begin{tikzpicture}[scale=1.1]
-\begin{axis}[
-    title={Correlation between $\hdeg(G)$ and Solver Time},
-    xlabel={Predicted Difficulty ($\hdeg(G)$)},
-    ylabel={Resolution Time (seconds)},
-    grid=major,
-    xmin=45, xmax=130,
-    ymin=0, ymax=0.0016,
-    ytick distance=0.0002,
-    scatter/classes={
-        easy={mark=*,draw=blue,fill=blue},
-        mid={mark=*,draw=blue,fill=blue},
-        hard={mark=*,draw=blue,fill=blue},
-        vhard={mark=*,draw=red,fill=red}
-    }
-]
-\addplot[scatter,only marks,point meta=explicit symbolic] table[meta=label] {
-    x       y       label
-    50.395  0.0001  easy
-    60.123  0.0002  mid
-    80.522  0.0004  hard
-    126.084 0.0014  vhard
-};
-
-\node[anchor=west, text=blue] at (axis cs:50.395,0.0001) {Easy};
-\node[anchor=west, text=blue] at (axis cs:60.123,0.0002) {Mid};
-\node[anchor=west, text=blue] at (axis cs:80.522,0.0004) {Hard};
-\node[anchor=south west, text=red] at (axis cs:126.084,0.0014) {\textbf{V. Hard}};
-
-\end{axis}
-\end{tikzpicture}
-\caption{Correlation between $\hdeg(G)$ and MiniSat time (illustrative).}
+\includegraphics[width=0.8\linewidth]{../figures/ws_runtime_kissat_clean.png}
+\caption{Kissat runtimes under Watts--Strogatz perturbations.
+Each point corresponds to one seed; the blue curve shows the median.
+A sharp increase appears at $p=0.01$, followed by systematic timeout.}
+\label{fig:ws_kissat_runtime}
 \end{figure}
 \FloatBarrier
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.8\linewidth]{../figures/ws_runtime_minisat_clean.png}
+\caption{MiniSat runtimes for the same experiment.
+The transition occurs earlier, with immediate timeout at $p=0.01$.}
+\label{fig:ws_minisat_runtime}
+\end{figure}
+\FloatBarrier
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.8\linewidth]{../figures/ws_timeout_rate_multiseed.png}
+\caption{Timeout rate as a function of rewiring probability $p$.
+MiniSat reaches full timeout at $p=0.01$, whereas Kissat does so at $p=0.02$.}
+\label{fig:ws_timeout_multiseed}
+\end{figure}
+\FloatBarrier
+
+% ============================
+\subsection{Spectral predictor vs runtime}
+
+We compare $\hdeg(G)$ with observed solver runtimes on small benchmark families.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.8\linewidth]{../figures/tseitin_complexity_analysis.png}
+\caption{Correlation between $\hdeg(G)$ and solver runtime.
+Higher $\hdeg(G)$ values tend to correspond to harder instances.}
+\label{fig:hdeg_correlation}
+\end{figure}
+\FloatBarrier
+
+These results suggest that $\hdeg(G)$ captures a meaningful structural component
+of practical SAT difficulty, although further large-scale validation is required.
+
+% ============================
+\section{Discussion: Structural Phase Transition and Information Thresholds}
+
+The observed transition under Watts--Strogatz perturbations suggests the existence
+of structural thresholds governing solver behavior.
+
+In highly regular graphs ($p=0$), the structure appears compressible and efficiently
+exploitable by CDCL heuristics.
+Introducing a small amount of randomness disrupts this structure,
+leading to a sharp increase in computational effort.
+
+This behavior is consistent with the intuition underlying the MPCC conjecture:
+solvers must process a minimal amount of structural information before deriving a contradiction.
+
+The existence of solver-dependent thresholds further suggests that this phenomenon
+arises from the interaction between instance structure and solver heuristics,
+rather than from a purely combinatorial property of the instance.
+
+While these interpretations remain speculative, the reproducibility and sharpness
+of the observed transition provide strong motivation for further investigation.
 
 % ============================
 \section{Limitations and Future Directions}
@@ -385,17 +475,26 @@ width~\cite{BenSassonWigderson2001} or treewidth is an important open direction.
 \paragraph{Experimental limitations.}
 The empirical validation in this preprint is limited in scope:
 \begin{itemize}
-  \item small instance sizes ($n \leq 80$);
-  \item few data points per family (on the order of $4$--$10$ instances);
-  \item no formal statistical analysis (regression, confidence intervals);
+  \item small instance sizes ($n \leq 80$).
+  \item few data points per family (on the order of $4$--$10$ instances).
+  \item no formal statistical analysis (regression, confidence intervals).
   \item no comparison with alternative predictors (e.g.\ treewidth, Resolution width,
-        expansion alone, clause-learning statistics);
+        expansion alone, clause-learning statistics).
   \item apparent outliers (e.g.\ 6-regular $n=80$) remain unexplained.
+  \item no claim of average-case hardness or asymptotic lower bounds is made.
+  \item the observed transition is reported at a single $(n,d)$ and with a fixed timeout,
+      mapping its dependence on $n$, $d$, and solver settings remains future work.
+  \item In particular, we do not yet compute the spectral gap $\gap$ for the Watts--Strogatz instances,
+      and therefore cannot directly evaluate $\hdeg(G)$ in this regime.
+  \item The observed structural phase transition is documented at a single $(n,d)$ scale,
+      and its dependence on graph size, degree, and solver configuration remains to be studied.
 \end{itemize}
 A convincing validation would require: (i) at least $100$ instances per family, scaling
 to $n \geq 10^3$; (ii) multiple random seeds per configuration; (iii) formal regression
 analysis (e.g.\ log-time explained by $\hdeg(G)$); and (iv) head-to-head comparison with
 known complexity measures.
+In particular, we do not yet compute the spectral gap $\gap$ for the Watts--Strogatz instances,
+and therefore cannot directly evaluate $\hdeg(G)$ in this regime.
 
 \paragraph{Open questions.}
 We highlight a few questions that we believe are both natural and approachable:
@@ -413,7 +512,7 @@ to test, extend, or refute these ideas.
 % ============================
 \section{Licensing}
 
-Experimental code (Python scripts) is released under the \textbf{MIT License}.  
+Experimental code (Python scripts) is released under the \textbf{MIT License}.
 This document and embedded figures are under the \textbf{CC BY 4.0} license.
 
 % ============================

@@ -1,0 +1,10 @@
+command	seconds	exit_code
+discovery analysis	1.60	0
+confirmation analysis	2.51	0
+exploratory AFT analysis	6.68	0
+conditional AFT score bootstrap	0.75	0
+prespecified robustness analysis	3.84	0
+robustness audit	2.06	0
+exploratory effective-dose sensitivity	5.61	0
+paper figure generation	1.49	0
+final archived-results verification	<0.01	0
