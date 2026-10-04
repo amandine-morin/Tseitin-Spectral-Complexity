@@ -7,13 +7,15 @@ paper studies how controlled, degree-preserving perturbations of a 4-regular
 ring are associated with fixed-budget behavior of a specific CDCL solver on
 the corresponding Tseitin formulas.
 
+The current public package is the `v1.0.1-paper` corrective release. It removes personal filesystem paths from the reproducibility archive and clarifies file-category licenses; scientific results are unchanged. The historical `v1.0-paper` release remains available but should not be used for redistribution.
+
 ## Paper and reproducibility materials
 
-- [Final preprint (PDF)](deliveries/2026-10-04_13-26_Amandine-Morin_Tseitin-Structural-Perturbations/paper/2026-10-04_13-26_Amandine-Morin_Tseitin-Structural-Perturbations.pdf)
-- [Final LaTeX source](deliveries/2026-10-04_13-26_Amandine-Morin_Tseitin-Structural-Perturbations/paper/2026-10-04_13-26_Amandine-Morin_Tseitin-Structural-Perturbations.tex)
-- [Reproducibility instructions](deliveries/2026-10-04_13-26_Amandine-Morin_Tseitin-Structural-Perturbations/reproducibility/README.md)
-- [Verification report](deliveries/2026-10-04_13-26_Amandine-Morin_Tseitin-Structural-Perturbations/reproducibility/verification/VERIFICATION_REPORT.md)
-- [Release and frozen reproducibility archive](https://github.com/amandine-morin/Tseitin-Spectral-Complexity/releases/tag/v1.0-paper)
+- [Final preprint (PDF)](deliveries/2026-10-04_13-26_Amandine-Morin_Tseitin-Structural-Perturbations_v1.0.1-paper/paper/2026-10-04_13-26_Amandine-Morin_Tseitin-Structural-Perturbations.pdf)
+- [Final LaTeX source](deliveries/2026-10-04_13-26_Amandine-Morin_Tseitin-Structural-Perturbations_v1.0.1-paper/paper/2026-10-04_13-26_Amandine-Morin_Tseitin-Structural-Perturbations.tex)
+- [Reproducibility instructions](deliveries/2026-10-04_13-26_Amandine-Morin_Tseitin-Structural-Perturbations_v1.0.1-paper/reproducibility/README.md)
+- [Verification report](deliveries/2026-10-04_13-26_Amandine-Morin_Tseitin-Structural-Perturbations_v1.0.1-paper/reproducibility/verification/VERIFICATION_REPORT.md)
+- [Release and frozen reproducibility archive](https://github.com/amandine-morin/Tseitin-Spectral-Complexity/releases/tag/v1.0.1-paper)
 
 ## Experimental design and findings
 
@@ -51,7 +53,7 @@ size, or generalization to other graph sizes or solvers.
 
 ## Reproducing the paper analyses without Kissat
 
-Download the reproducibility archive from the `v1.0-paper` release, verify its
+Download the reproducibility archive from the `v1.0.1-paper` release, verify its
 SHA-256 sidecar, extract it, and follow its English `README.md`. The listed
 commands operate only on preserved inputs and outcomes; they do not invoke a
 solver. The package records the exact analysis commands, dependencies, measured
@@ -60,7 +62,7 @@ analysis runtimes, known historical limitations, and a SHA-256 manifest.
 The frozen archive SHA-256 is:
 
 ```text
-ee4ed30c14bb0db299caa9a02aa7c8ca908a9d59aaa63d42d614bcfb523dd340
+262d55a54b5571539022283495aa2af1808e215e9722bf96ba69ac2403ffacd8
 ```
 
 The implementation material below documents the broader experimental pipeline.
@@ -92,11 +94,17 @@ speed with censoring effects and keeps comparisons scientifically interpretable.
 
 ## 📚 Licensing
 
-### Code  
+### Original project code and analysis scripts
+
 MIT License.
 
-### Research Text & Figures  
+### Paper, author-created figures, and original experimental data and metadata
+
 Creative Commons Attribution 4.0 International (CC BY 4.0).
+
+### Third-party components
+
+Third-party software is not relicensed. The reproducibility package does not redistribute a Kissat executable, a vendored Python environment, or source code from named Python dependencies. See the corrective delivery's `LICENSES.md` for the precise category statement.
 
 ---
 

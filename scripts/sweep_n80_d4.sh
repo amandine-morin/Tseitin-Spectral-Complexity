@@ -3,13 +3,13 @@ set -euo pipefail
 
 OUT=/tmp/sweep
 BIN=./code/cpp/build/run_kissat
-KISSAT_BIN=${KISSAT_BIN:-/home/dinah/kissat/build/kissat}
+KISSAT_BIN=${KISSAT_BIN:-kissat}
 
 rm -rf "$OUT"
 mkdir -p "$OUT"
 
-if [[ ! -x "$KISSAT_BIN" ]]; then
-  echo "Kissat binary not found at $KISSAT_BIN." >&2
+if ! KISSAT_BIN=$(command -v "$KISSAT_BIN"); then
+  echo "Kissat binary not found: set KISSAT_BIN to an executable path or add kissat to PATH." >&2
   echo "Example: KISSAT_BIN=/path/to/kissat bash scripts/sweep_n80_d4.sh" >&2
   exit 1
 fi

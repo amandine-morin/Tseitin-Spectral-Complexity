@@ -1,0 +1,13 @@
+{
+  "aft_input_resolution": "PASS",
+  "binary_files_byte_identical": 29,
+  "data_files_byte_identical_after_path_normalization": 2061,
+  "effective_dose_input_resolution": "PASS",
+  "final_pdf_sha256": "4de5d61e9d14603f9f282ae3c54b08d5c6302bf38b82137e08287a8a0f719f2e",
+  "final_pdf_unchanged": true,
+  "personal_path_occurrences": 0,
+  "portable_kissat_path_markers": 709,
+  "portable_project_root_markers": 5248,
+  "sanitized_internal_hashes": "PASS",
+  "version": "v1.0.1-paper"
+}
