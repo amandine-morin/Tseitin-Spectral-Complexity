@@ -11,6 +11,10 @@ The current public package is the `v1.0.1-paper` corrective release. It removes 
 
 ## Paper and reproducibility materials
 
+Amandine Morin (2026). *Degree-Preserving Structural Perturbations and CDCL Behavior in Tseitin Formulas.*
+Preprint and reproducibility package: https://doi.org/10.5281/zenodo.23140384
+This preprint has not been peer reviewed.
+
 - [Final preprint (PDF)](deliveries/2026-10-04_13-26_Amandine-Morin_Tseitin-Structural-Perturbations_v1.0.1-paper/paper/2026-10-04_13-26_Amandine-Morin_Tseitin-Structural-Perturbations.pdf)
 - [Final LaTeX source](deliveries/2026-10-04_13-26_Amandine-Morin_Tseitin-Structural-Perturbations_v1.0.1-paper/paper/2026-10-04_13-26_Amandine-Morin_Tseitin-Structural-Perturbations.tex)
 - [Reproducibility instructions](deliveries/2026-10-04_13-26_Amandine-Morin_Tseitin-Structural-Perturbations_v1.0.1-paper/reproducibility/README.md)
