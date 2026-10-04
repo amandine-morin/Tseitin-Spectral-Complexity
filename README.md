@@ -1,144 +1,70 @@
-# Spectral Predictors for Tseitin Hardness: An Exploratory Study  
-**Independent Research by Amandine Morin**
+# Degree-Preserving Structural Perturbations and CDCL Behavior in Tseitin Formulas
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17730888.svg)](https://doi.org/10.5281/zenodo.17730888)
+**Amandine Morin**
 
----
+This repository accompanies a **preprint that has not been peer reviewed**. The
+paper studies how controlled, degree-preserving perturbations of a 4-regular
+ring are associated with fixed-budget behavior of a specific CDCL solver on
+the corresponding Tseitin formulas.
 
-## 📎 Citation
+## Paper and reproducibility materials
 
-If you use this work, please cite:
+- [Final preprint (PDF)](deliveries/2026-10-04_13-26_Amandine-Morin_Tseitin-Structural-Perturbations/paper/2026-10-04_13-26_Amandine-Morin_Tseitin-Structural-Perturbations.pdf)
+- [Final LaTeX source](deliveries/2026-10-04_13-26_Amandine-Morin_Tseitin-Structural-Perturbations/paper/2026-10-04_13-26_Amandine-Morin_Tseitin-Structural-Perturbations.tex)
+- [Reproducibility instructions](deliveries/2026-10-04_13-26_Amandine-Morin_Tseitin-Structural-Perturbations/reproducibility/README.md)
+- [Verification report](deliveries/2026-10-04_13-26_Amandine-Morin_Tseitin-Structural-Perturbations/reproducibility/verification/VERIFICATION_REPORT.md)
+- [Release and frozen reproducibility archive](https://github.com/amandine-morin/Tseitin-Spectral-Complexity/releases/tag/v1.0-paper)
 
-**Amandine Morin**. (2025). *amandine-morin/Tseitin-Spectral-Complexity: Initial Public Version (v1.0.0).* Zenodo.  
-https://doi.org/10.5281/zenodo.17730888
+## Experimental design and findings
 
-BibTeX:
+The study applies randomized double-edge swaps while preserving the number of
+vertices, number of edges, and every vertex degree. Its stages have distinct
+roles:
 
-```bibtex
-@software{amandine_tseitin_spectral_2025,
-  author       = {Amandine Morin},
-  title        = {{amandine-morin/Tseitin-Spectral-Complexity: Initial Public Version}},
-  month        = nov,
-  year         = 2025,
-  publisher    = {Zenodo},
-  version      = {v2.0.0},
-  doi          = {10.5281/zenodo.17730888},
-  url          = {https://doi.org/10.5281/zenodo.17730888}
-}
+1. a 300-instance discovery campaign identified structural associations;
+2. an independently seeded 200-instance confirmation tested frozen within-swap
+   comparisons;
+3. an eight-graph pilot examined sensitivity to formula presentation;
+4. a prespecified robustness campaign used 60 outcome-blind selected graphs
+   and five randomized presentations per graph; and
+5. censored AFT, quadratic-treewidth, score-uncertainty, and effective-dose
+   analyses were retained as exploratory or sensitivity analyses as labelled
+   in the paper.
+
+The independent confirmation replicated the prespecified association of
+higher global efficiency and lower modularity with censoring at both studied
+swap levels. In the repeated-presentation sample, 24 of 60 graphs had both
+resolved and censored outcomes among their five presentations. This is an
+observation for this sample, solver, presentation distribution, and 60-second
+budget; it is not a universal instability rate for SAT benchmarks.
+
+In the prespecified grouped analysis, the adjusted global-efficiency
+coefficient had the expected negative direction and its graph-bootstrap
+interval excluded zero. The additional held-out binary log-score gain was
+positive but inconclusive because its conditional interval included zero.
+Under the frozen decision rule, **robustness was not established**. This does
+not constitute evidence that the association is absent.
+
+The experiments measure observed search cost for one encoding and one solver.
+They do not establish causality, exact-treewidth independence, minimum proof
+size, or generalization to other graph sizes or solvers.
+
+## Reproducing the paper analyses without Kissat
+
+Download the reproducibility archive from the `v1.0-paper` release, verify its
+SHA-256 sidecar, extract it, and follow its English `README.md`. The listed
+commands operate only on preserved inputs and outcomes; they do not invoke a
+solver. The package records the exact analysis commands, dependencies, measured
+analysis runtimes, known historical limitations, and a SHA-256 manifest.
+
+The frozen archive SHA-256 is:
+
+```text
+ee4ed30c14bb0db299caa9a02aa7c8ca908a9d59aaa63d42d614bcfb523dd340
 ```
 
-## 🔍 Overview
-
-This repository accompanies an **exploratory preprint** investigating how  
-**spectral graph structure** relates to the hardness of **Tseitin formulas**  
-in the Resolution proof system.
-
-The project is motivated by a **physics-first viewpoint**:  
-if information has physical cost (Landauer), then distinguishing SAT from UNSAT  
-should require a minimal **information budget** determined by the structure of the graph.
-
-This work presents *conjectures and preliminary observations*, not formal proofs.
-
-Status: Active experimental branch (C++ pipeline + Kissat).
-This branch supersedes the Python-based experiments in main.
-
----
-
-## 🔑 Core Hypothesis: The Spectral Predictor `\hat{deg}(G)`
-
-We propose the following spectral quantity as a hardness predictor:
-
-\[
-\widehat{\deg}(G) =
-\frac{n}{\sqrt{\frac{1}{d} + \frac{1}{\lambda_2}}}
-\]
-
-Where:
-
-- `n` = number of vertices  
-- `d` = average degree  
-- `λ₂` = the spectral gap of the normalized Laplacian  
-
-This blends **local density** and **global connectivity** into a single  
-structural measure intended to approximate the *minimal incompressible information*  
-any algorithm must process to solve a Tseitin instance.
-
-This is **conjectural**, not a proven theorem.
-
----
-
-## 📊 Empirical Observations (Preliminary)
-
-Small-scale experiments (up to `n = 80`) show:
-
-- A noticeable correlation between `\hat{deg}(G)` and SAT solver time  
-- Canonical families behave as predicted (cycles, grids, expanders)  
-- Expander-like graphs show an **exponential jump** in difficulty  
-
-These results are **illustrative**, not statistically conclusive.
-
-### 🔄 Structural Sensitivity (Preliminary Observation)
-
-Initial experiments with Watts–Strogatz perturbations suggest a strong
-sensitivity of Tseitin hardness to small structural changes.
-
-Starting from a circulant graph (`p = 0`), even a very small rewiring
-probability (e.g. `p ≈ 0.01`) can lead to a sharp increase in solver runtime,
-often pushing instances from near-instant resolution to timeout regimes.
-
-This effect appears consistently across multiple SAT solvers (Kissat, Minisat),
-suggesting that it is not solver-specific but tied to structural properties
-of the underlying graph.
-
-These observations are preliminary and require further statistical validation.
-
-### Quick Access
-
-- 📈 **Correlation Plot:**  
-  `./figures/tseitin_complexity_analysis.png`
-- 📄 **Full Preprint (PDF):**  
-  `./report/minimal_proof_compression.pdf`
-
----
-
-## 🧪 Reproducing the Experiments
-
-### Requirements
-
-| Library      | Role                                      |
-|--------------|--------------------------------------------|
-| `networkx`   | Graph generation & spectral computations   |
-| `pysat`      | SAT solving via MiniSat backend            |
-| `numpy`      | Linear algebra & numerics                  |
-| `matplotlib` | Visualizations                             |
-
-### Install dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### Run experiments
-
-```bash
-python code/main_experiment.py
-```
-
----
-
-## ⚠️ Disclaimer
-
-This is an **exploratory research project** containing:
-
-- Conjectures (no theorems are proved)
-- Preliminary empirical evidence
-- Speculative connections between physics, spectral graph theory,  
-  and proof complexity
-
-Instance sizes are small, and the results should be viewed as  
-**hypothesis-generating** rather than conclusive.
-
-Feedback, testing, critique, and replication are warmly invited.
+The implementation material below documents the broader experimental pipeline.
+It is not required for analysis-only reproduction of the published results.
 
 ---
 
@@ -207,7 +133,7 @@ code/
 
 ### Build (VS Code on Windows)
 1. Install **Visual Studio 2022 Build Tools** with the C++ workload and **CMake**.
-2. Install **WSL** with an Ubuntu distribution and build Kissat at `/home/dinah/kissat/build/kissat` inside WSL.
+2. Install **WSL** with an Ubuntu distribution and build Kissat at `<path-to-kissat>/build/kissat` inside WSL.
 3. Open the repository folder (or `code/cpp` directly) in VS Code (Windows side) and install the **CMake Tools** extension.
 4. Configure the project with `code/cpp/CMakeLists.txt` as the source:
    - Command Palette → `CMake: Select a Kit` → choose **Visual Studio 17 2022** (x64).

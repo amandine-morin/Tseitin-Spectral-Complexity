@@ -1,0 +1,27 @@
+[
+  {
+    "figure": "normalized_structure_and_timeout.pdf",
+    "render_sha256": "5b078b274d3ea17b6ce07fa573ae08c2f3a3c5bbbb28ca752dc8531661e2a71b",
+    "pixel_render_identical_to_archived": true
+  },
+  {
+    "figure": "resolved_runtime_vs_requested_swaps.pdf",
+    "render_sha256": "1a5ccfe5b7e857c93ceaea03e5af2ef0201e85dd335758c2619b3aa65b9ddf09",
+    "pixel_render_identical_to_archived": true
+  },
+  {
+    "figure": "solver_diagnostics_vs_requested_swaps.pdf",
+    "render_sha256": "c54006f5d6be3d211e0af56893da39c82cbb4d918128755dcc7cebe6c16bee95",
+    "pixel_render_identical_to_archived": true
+  },
+  {
+    "figure": "timeout_fraction_vs_requested_swaps.pdf",
+    "render_sha256": "3f99459f720f3835f36fd8a7e9746eb5843f2a72079063d386cf6c166bf42ccd",
+    "pixel_render_identical_to_archived": true
+  },
+  {
+    "figure": "tracked_clause_diagnostics_vs_requested_swaps.pdf",
+    "render_sha256": "4af51c4e325e37f70948b348efb933de1e87a4b8200b65a974e81dbd1c999086",
+    "pixel_render_identical_to_archived": true
+  }
+]
